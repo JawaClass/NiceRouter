@@ -1,0 +1,113 @@
+from typing import Any, Literal
+
+import sqlalchemy as sa
+from fastapi import HTTPException
+from pydantic import BaseModel, create_model, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm import DeclarativeBase
+from src.sa_select_in_deep import select_relationships_deep
+from pprint import pprint
+
+
+async def scalar_or_throw_by_id(
+    *,
+    db: AsyncSession,
+    db_class: type[Any],
+    id: int,
+):
+    query = sa.select(db_class).where(db_class.id == id)
+    return await scalar_or_throw(db=db, db_class=db_class, query=query)
+
+
+async def scalar_or_throw(
+    *,
+    db: AsyncSession,
+    db_class: type[Any],
+    query: sa.Select,
+):
+    result = await db.execute(query)
+    instance = result.scalar()
+    if not instance:
+        raise HTTPException(status_code=404, detail=f"{db_class.__name__} not found")
+    return instance
+
+def is_column_field(db_class: object, field: str):
+    attr = getattr(db_class, field)
+    if not attr:
+        return False
+    
+    return isinstance(attr, InstrumentedAttribute)
+
+def build_filter_by(filter_by: str, db_class: object):
+    filter_expresssions = filter_by.split(",")
+    filters = []
+    for filter_expr in filter_expresssions:
+        field, value = filter_expr.split("=")
+        if not is_column_field(db_class, field):
+            raise HTTPException(status_code=400, detail=f"Invalid filter field: {field}")
+        filters.append(getattr(db_class, field) == value)
+    return filters
+
+def build_sort_by(sort_by: str, db_class: object):
+    order_columns = []
+    fields = sort_by.split(",")
+    for field in fields:
+        desc = False
+        if field.startswith("-"):
+            desc = True
+            field = field[1:]
+        if not is_column_field(db_class, field):
+            raise HTTPException(status_code=400, detail=f"Invalid sort field: {field}")
+        col = getattr(db_class, field)
+        order_columns.append(col.desc() if desc else col.asc())
+    return order_columns
+
+
+def get_db_class_fields(db_class: object):
+    valid_attrs: dict[str, InstrumentedAttribute] = {
+            attr: getattr(db_class, attr)
+            for attr in dir(db_class)
+            if isinstance(getattr(db_class, attr), InstrumentedAttribute)
+        }
+    return valid_attrs
+    
+async def get_all[E](
+    db_class: type[E],
+    response_model: type[BaseModel],
+    db: AsyncSession,
+    limit: int,
+    offset: int,
+    query: sa.Select | None = None,
+    # query_filter: dict[str, Any] | None = None,
+    sort_by: str | None = None,
+    filter_by: str | None = None,
+):
+    # main select
+    stmt = query or sa.select(db_class).options(
+        *select_relationships_deep(db_class, response_model)
+    )
+
+    # add filter
+    if filter_by:
+        # Get available column names on the model
+        filters = build_filter_by(filter_by=filter_by, db_class=db_class)
+
+        if filters:
+            stmt = stmt.where(*filters)
+    
+    # add offset
+    stmt = stmt.offset(offset=offset).limit(limit=limit)
+
+    # add sorting
+    if sort_by:
+        order_columns = build_sort_by(sort_by=sort_by, db_class=db_class)
+        stmt = stmt.order_by(*order_columns)
+
+    result = await db.execute(stmt)
+    return result.scalars()
+ 
+
+ 
+def tags_from_prefix(prefix: str):
+    return [prefix.strip("/").split("/")[0]]

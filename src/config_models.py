@@ -1,0 +1,50 @@
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+import sqlalchemy as sa
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class GetByIdConfig(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    response_model: type[BaseModel]
+    query: sa.Select | None = None
+
+
+class GetAllConfig(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    response_model: type[BaseModel]
+    query: sa.Select | None = None
+
+type PreProcessorCallable[INPUT_MODEL] = Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]]
+
+class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
+    input_model: type[INPUT_MODEL]
+    response_model: type[BaseModel]
+    preprocessor_input: Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]] | None = None
+
+
+class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
+    input_model: type[BaseModel]
+    response_model: type[BaseModel] | None = None
+    preprocessor_input: PreProcessorCallable[INPUT_MODEL] | None = None
+
+
+
+class DeleteRouteConfig(BaseModel):
+    pass
+
+
+class DeleteMultiRouteConfig(BaseModel):
+    pass
+
+
+class CreateRouterConfig(BaseModel):
+    db_class: type[Any]
+    get_by_id_route: GetByIdConfig | None = None
+    get_all_route: GetAllConfig | None = None
+    create_route: CreateRouteConfig | None = None
+    patch_route: PatchRouteConfig | None = None
+    delete_route: DeleteRouteConfig | None = None
+    delete_multi_route: DeleteMultiRouteConfig | None = None
