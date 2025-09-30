@@ -8,12 +8,12 @@ from fastapi import Depends, HTTPException, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.routing import routes_service
-from src.routing.sa_select_in_deep import select_relationships_deep
-from src.routing.models import ResponseType
-from src.normalization.object_builders import build_normalized_store_object
-from src.normalization.type_builder import build_normalized_store_type 
-from src.routing.routes_service import tags_from_prefix 
+from nicerouter.routing import routes_service
+from nicerouter.routing.sa_select_in_deep import select_relationships_deep
+from nicerouter.routing.models import ResponseType
+from nicerouter.normalization.object_builders import build_normalized_store_object
+from nicerouter.normalization.type_builder import build_normalized_store_type 
+from nicerouter.routing.routes_service import tags_from_prefix 
 
 
 def create_get_all_route(

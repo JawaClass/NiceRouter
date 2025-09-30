@@ -3,9 +3,9 @@ from typing import Any, AsyncGenerator, Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import APIRouter
-from src.routing.config_models import CreateRouteConfig, CreateRouterConfig, DeleteRouteConfig, GetAllConfig, GetByIdConfig, PatchRouteConfig
-from src.routing.model_generator import generate_model_schema_in, generate_model_schema_out
-from src.routing.routes_factory import create_batch_patch_route_varied, create_delete_multi_route, create_delete_route, create_get_all_route, create_get_by_id_route, create_patch_route, create_post_route
+from nicerouter.routing.config_models import CreateRouteConfig, CreateRouterConfig, DeleteRouteConfig, GetAllConfig, GetByIdConfig, PatchRouteConfig
+from nicerouter.routing.model_generator import generate_model_schema_in, generate_model_schema_out
+from nicerouter.routing.routes_factory import create_batch_patch_route_varied, create_delete_multi_route, create_delete_route, create_get_all_route, create_get_by_id_route, create_patch_route, create_post_route
 
 
 def build_router_config(db_class: type[Any]):

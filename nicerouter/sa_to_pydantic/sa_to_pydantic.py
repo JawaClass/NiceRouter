@@ -5,7 +5,7 @@ from pprint import pprint
 from typing import Any, ForwardRef, Literal, get_type_hints, get_origin, get_args, Callable
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from types import UnionType
-from src.type_utils import extract_most_inner_type
+from nicerouter.type_utils import extract_most_inner_type
 from typing import ForwardRef
 from typing import Union
 
@@ -26,7 +26,7 @@ def sa_to_pydantic(
     base_model: type[BaseModel] | None = None,
     circular_depency_strategy: CircularDepencyStrategy = "discard"
 ) -> type[BaseModel]:
-    print("sa_to_pydantic ...", model, name_generator(model.__name__))
+    
     reg_before = set(REGISTRY.keys())
 
     _sa_to_pydantic(
@@ -62,7 +62,7 @@ def _sa_to_pydantic(
     circular_depency_strategy: CircularDepencyStrategy
 ) -> type[BaseModel] | ForwardRef | None:
     model_name = name_generator(model.__name__)
-    print("_sa_to_pydantic ..", model)
+    # print("_sa_to_pydantic ..", model)
     if base_model:
         assert issubclass(base_model, BaseModel), f"{base_model} not a BaseModel"
 
@@ -78,7 +78,7 @@ def _sa_to_pydantic(
         if circular_depency_strategy == "forwardref":
             return ForwardRef(model_name)
         if circular_depency_strategy == "discard":
-            print("DISCARD", model_name, "::", _stack, "::", REGISTRY)
+            # print("DISCARD", model_name, "::", _stack, "::", REGISTRY)
             return None
     # if model_name in _seen: 
     #     # forward reference to handle circular relationships

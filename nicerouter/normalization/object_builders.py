@@ -1,6 +1,6 @@
 from typing import Any, Iterable
 from pydantic import BaseModel
-from src.normalization.normalizer import ObjectNormalizer
+from nicerouter.normalization.normalizer import ObjectNormalizer
   
 def normalize_rows[E](
     *,

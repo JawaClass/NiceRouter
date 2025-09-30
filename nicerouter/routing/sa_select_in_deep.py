@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from sqlalchemy.orm import Load, selectinload
 
-from src.type_utils import extract_most_inner_type
+from nicerouter.type_utils import extract_most_inner_type
 
 
 

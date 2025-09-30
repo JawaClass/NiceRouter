@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.routing import create_router_for_db
+from nicerouter.routing import create_router_for_db
 from example.model import User, ToDoItem
 from example.db import get_db, init_db
 

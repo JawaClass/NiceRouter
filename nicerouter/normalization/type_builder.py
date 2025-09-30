@@ -1,9 +1,9 @@
 from typing import Sequence
 from pydantic import BaseModel, create_model, Field
 from pydantic_core import PydanticUndefinedType
-from src.normalization.type_util import is_reference_type, is_list_reference_type
+from nicerouter.normalization.type_util import is_reference_type, is_list_reference_type
 from pprint import pprint
-from src.type_utils import extract_most_inner_type
+from nicerouter.type_utils import extract_most_inner_type
 
 def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
      

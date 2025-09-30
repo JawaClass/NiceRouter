@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
 import sqlalchemy as sa
 
-from src.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
+from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
 
 
 def generate_model_schema_out(

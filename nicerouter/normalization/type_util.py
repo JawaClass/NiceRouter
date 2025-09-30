@@ -1,6 +1,6 @@
 from typing import Sequence
 from pydantic import BaseModel
-from src.type_utils import extract_most_inner_type
+from nicerouter.type_utils import extract_most_inner_type
 from typing import get_origin
 
 def is_reference_type(typ: type) -> bool:

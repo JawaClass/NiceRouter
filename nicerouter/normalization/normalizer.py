@@ -1,8 +1,8 @@
 from collections import defaultdict
 from typing import Any, Callable, Sequence, get_origin
 from pydantic import BaseModel 
-from src.type_utils import extract_most_inner_type
-from src.normalization.type_util import is_list_reference_type, is_reference_type
+from nicerouter.type_utils import extract_most_inner_type
+from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 
 
 class ObjectNormalizer:

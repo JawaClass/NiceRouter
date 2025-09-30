@@ -1,4 +1,4 @@
-from src.normalization.normalizer import ObjectNormalizer
+from nicerouter.normalization.normalizer import ObjectNormalizer
 from pydantic import BaseModel
 from pprint import pprint, pformat
 

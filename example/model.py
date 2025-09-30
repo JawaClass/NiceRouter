@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from pprint import pprint 
 
-from src.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
+from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
 
 
 class Base(DeclarativeBase):
