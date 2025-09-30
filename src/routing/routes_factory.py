@@ -8,14 +8,12 @@ from fastapi import Depends, HTTPException, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from src import routes_service
-from src.sa_select_in_deep import select_relationships_deep
-from src.models import ResponseType
-# from src.util.nice_router import service
-# from src.util.normalization.caonical_names_strategies import class_name_strategy
-# from src.util.normalization.collect_names import build_normalized_response_model
-# from src.util.normalization.normalize import Normalizer
-# from src.util.select_relationship import select_relationships_deep
+from src.routing import routes_service
+from src.routing.sa_select_in_deep import select_relationships_deep
+from src.routing.models import ResponseType
+from src.normalization.object_builders import build_normalized_store_object
+from src.normalization.type_builder import build_normalized_store_type 
+from src.routing.routes_service import tags_from_prefix 
 
 
 def create_get_all_route(
@@ -67,28 +65,18 @@ def create_get_all_route(
         )
 
         if response_type == ResponseType.Normalized:
-
-            print(
-                "build_normalize_response normalized_response_type::",
-                normalized_response_type,
-            )
-            # input("...")
-
-            store = build_normalize_response(
-                normalized_response_type=normalized_response_type,
-                entity_name=tags[0],
+            store = build_normalized_store_object(
+                normalized_response_type=normalized_response_type, 
                 items=rows, # type:ignore
                 response_model=response_model,
             )
-            print("returns store", type(store))
-            # print(store)
-            return store
-
+            
+            return store 
         return rows
 
-    normalized_response_type = build_normalize_response_type(response_model)
-    # dict[str, Any]
+    normalized_response_type = build_normalized_store_type(model_class=response_model)
     response_model_union = normalized_response_type | list[response_model]
+    # response_model_union = list[response_model]
 
     return APIRoute(
         path=prefix,
@@ -127,17 +115,15 @@ def create_get_by_id_route(
 
         if response_type == ResponseType.Normalized:
 
-            return build_normalize_response(
-                normalized_response_type=normalized_response_type,
-                entity_name=tags[0],
+            return build_normalized_store_object(
+                normalized_response_type=normalized_response_type, 
                 items=[item],
                 response_model=response_model,
             )
 
         return item
 
-    normalized_response_type = build_normalize_response_type(response_model)
-
+    normalized_response_type = build_normalized_store_type(response_model)
     response_model_union = normalized_response_type | response_model
 
     return APIRoute(
@@ -167,7 +153,8 @@ def create_post_route(
         response_type: Annotated[
             ResponseType,
             Query(
-                description="returns the requested entities as a normalized store object perfectly for redux based state management",
+                description="""returns the requested entities as a normalized  
+                 store object perfectly for redux based state management""",
             ),
         ] = ResponseType.Nested,
         db: AsyncSession = Depends(get_db_session),
@@ -188,17 +175,15 @@ def create_post_route(
         item = await routes_service.scalar_or_throw(db=db, db_class=db_class, query=stmt)
 
         if response_type == ResponseType.Normalized:
-            return build_normalize_response(
-                normalized_response_type=normalized_response_type,
-                entity_name=tags[0],
+            return build_normalized_store_object(
+                normalized_response_type=normalized_response_type, 
                 items=[item],
                 response_model=response_model,
             )
 
         return item
 
-    normalized_response_type = build_normalize_response_type(response_model)
-
+    normalized_response_type = build_normalized_store_type(response_model)
     response_model_union = normalized_response_type | response_model
 
     return APIRoute(

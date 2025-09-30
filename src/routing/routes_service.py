@@ -6,7 +6,7 @@ from pydantic import BaseModel, create_model, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import DeclarativeBase
-from src.sa_select_in_deep import select_relationships_deep
+from src.routing.sa_select_in_deep import select_relationships_deep
 from pprint import pprint
 
 

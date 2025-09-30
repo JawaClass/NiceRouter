@@ -1,12 +1,13 @@
 from typing import Any, ForwardRef, get_args
 
+
 def extract_most_inner_type(annotation: type[Any]):
     a = annotation
     prev = a
     while a is not None:
         prev = a
         a = extract_inner_type(a)
-        print("a", a)
+        # print("a", a)
     return prev
 
 def extract_inner_type_or_self(annotation: type[Any]):

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from sqlalchemy.orm import Load, selectinload
 
-from type_utils import extract_type_from_annotation
+from src.type_utils import extract_most_inner_type
 
 
 
@@ -22,7 +22,7 @@ def select_relationships_deep(
     """Creates a hierarchy of selectinload statements for a SQLAlchemy ORM class,
     filtered by a Pydantic response model.
     """
-    print("select_relationships_deep....", db_class, mask_class)
+    # print("select_relationships_deep....", db_class, mask_class)
     if depth >= max_depth:
         return []
     # Inspect relationships of the SQLAlchemy class
@@ -47,7 +47,7 @@ def select_relationships_deep(
         if annotation is None:
             continue
 
-        child_model = extract_type_from_annotation(annotation)
+        child_model = extract_most_inner_type(annotation)
  
         # Recurse
         if isinstance(child_model, type) and issubclass(child_model, BaseModel):

@@ -2,20 +2,21 @@ from pydantic import BaseModel, Field, create_model
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from pprint import pprint
-from typing import Any, ForwardRef, get_type_hints, get_origin, get_args, Callable
+from typing import Any, ForwardRef, Literal, get_type_hints, get_origin, get_args, Callable
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from types import UnionType
 from src.type_utils import extract_most_inner_type
 from typing import ForwardRef
 from typing import Union
+
+
+CircularDepencyStrategy = Literal["raise", "forwardref", "discard"]
+
 class SaPydanticRegistryNameSpace(dict[str, type[BaseModel]]):
     pass
 
 
 REGISTRY = SaPydanticRegistryNameSpace()
-
- 
-
 
 def sa_to_pydantic(
     *,
@@ -23,8 +24,9 @@ def sa_to_pydantic(
     name_generator: Callable[[str], str],
     exclude_fields: list[str] | None = None,
     base_model: type[BaseModel] | None = None,
+    circular_depency_strategy: CircularDepencyStrategy
 ) -> type[BaseModel]:
-
+    print("sa_to_pydantic ...", model, name_generator(model.__name__))
     reg_before = set(REGISTRY.keys())
 
     _sa_to_pydantic(
@@ -32,51 +34,58 @@ def sa_to_pydantic(
         name_generator=name_generator,
         exclude_fields=exclude_fields,
         base_model=base_model,
-    )
+        circular_depency_strategy=circular_depency_strategy
+    ) 
 
-    reg_after = set(REGISTRY.keys())
-
-    reg_difference = reg_after - reg_before
-
-    newly_added_models: dict[str, type[BaseModel]] = {
-        k: REGISTRY[k] for k in reg_difference
-    }
-
-    for created_model in newly_added_models.values():
-        created_model.model_rebuild(_types_namespace=REGISTRY)
+    if circular_depency_strategy == "forwardref":
+        reg_after = set(REGISTRY.keys()) 
+        reg_difference = reg_after - reg_before 
+        newly_added_models: dict[str, type[BaseModel]] = {
+            k: REGISTRY[k] for k in reg_difference
+        } 
+        for created_model in newly_added_models.values():
+            created_model.model_rebuild(_types_namespace=REGISTRY)
 
     model_name = name_generator(model.__name__)
 
     resolved_result_model = REGISTRY[model_name]
     return resolved_result_model
-
-
+ 
 def _sa_to_pydantic(
     *,
     model: type[DeclarativeBase],
     name_generator: Callable[[str], str],
     exclude_fields: list[str] | None = None,
-    base_model: type[BaseModel] | None = None,
-    _traversed: set[Any] | None = None,
+    base_model: type[BaseModel] | None = None, 
+    _stack: set[str] | None = None,
     _seen: set[str] | None = None,
-) -> type[BaseModel] | ForwardRef:
+    circular_depency_strategy: CircularDepencyStrategy
+) -> type[BaseModel] | ForwardRef | None:
     model_name = name_generator(model.__name__)
-
+    print("_sa_to_pydantic ..", model)
     if base_model:
         assert issubclass(base_model, BaseModel), f"{base_model} not a BaseModel"
 
-    _traversed = _traversed or set([model])
-
+    _stack = _stack or set()
     _seen = _seen or set()
 
     if model_name in REGISTRY:
         return REGISTRY[model_name]
 
-    if model_name in _seen:
-        # forward reference to handle circular relationships
-        return ForwardRef(model_name)
+    if model_name in _stack:
+        if circular_depency_strategy == "raise":
+            raise ValueError(f"Circular Depency detected: {model_name}")
+        if circular_depency_strategy == "forwardref":
+            return ForwardRef(model_name)
+        if circular_depency_strategy == "discard":
+            print("DISCARD", model_name, "::", _stack, "::", REGISTRY)
+            return None
+    # if model_name in _seen: 
+    #     # forward reference to handle circular relationships
+    #     return ForwardRef(model_name)
 
     _seen.add(model_name)
+    _stack.add(model_name)
 
     mapper = sa.inspect(model)
     relationships = mapper.relationships
@@ -96,7 +105,7 @@ def _sa_to_pydantic(
         inside_mapped_type_origin = get_origin(inside_mapped_type)
 
         is_union_type: bool = inside_mapped_type_origin in (Union, UnionType)
-
+        # extract primitive fields
         if not is_relationship:
             field_config = ...
             if is_union_type:
@@ -110,20 +119,20 @@ def _sa_to_pydantic(
                 field_config,
             )
         else:
-
+            # extract reference fields
             sa_rel_model = extract_most_inner_type(annotation) 
 
-            if sa_rel_model in _traversed:
-                annotation_type = REGISTRY[name_generator(sa_rel_model.__name__)]
-            else:
-                annotation_type = _sa_to_pydantic(
-                model=sa_rel_model,
-                name_generator=name_generator,
-                exclude_fields=None,
-                _traversed=_traversed,
-                _seen=_seen,
+            annotation_type = _sa_to_pydantic(
+            model=sa_rel_model,
+            name_generator=name_generator,
+            exclude_fields=None,
+            _seen=_seen,
+            _stack=_stack,
+            circular_depency_strategy=circular_depency_strategy
             )
-            _traversed.add(sa_rel_model)
+            # circular dependency in field => skip
+            if annotation_type is None:
+                continue
 
             if is_union_type:
                 union_childs = get_args(inside_mapped_type)
@@ -163,38 +172,8 @@ def _sa_to_pydantic(
 
     assert model_name in REGISTRY
 
+    # remove built model from stack
+    _stack.remove(model_name)
+
     return NewModel
  
-
-if __name__ == "__main__":
-
-    class Base(DeclarativeBase):
-        pass
-    class B(Base):
-        __tablename__ = "b"
-        id: Mapped[int] = mapped_column(primary_key=True)
-        a_id: Mapped[int] = mapped_column(sa.ForeignKey("A.id"))
-
-    class A(Base):
-        __tablename__ = "A"
-        id: Mapped[int] = mapped_column(primary_key=True)
-        foo: Mapped[str]
-        bar: Mapped[int]
-        optional: Mapped[int | None]
-
-        b: Mapped[B | None] = relationship()
-        b2: Mapped[B] = relationship()
-
-    model = sa_to_pydantic(model=A, name_generator=lambda x : x)
-    
-    print("pydantic_model", model)
-    pprint(model.model_fields)
-
-    assert model.model_fields["foo"].is_required()
-    assert model.model_fields["bar"].is_required()
-    assert model.model_fields["id"].is_required()
-    assert not model.model_fields["optional"].is_required()
-    assert not model.model_fields["b"].is_required()
-    assert model.model_fields["b2"].is_required()
-
-    model.model_validate(A(id=1, foo="foo", bar=5, b2=B(id=1, a_id=999)))
