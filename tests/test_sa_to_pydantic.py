@@ -38,7 +38,7 @@ class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str]
-    todo_items: Mapped[list[ToDoItem]] = relationship(back_populates="ToDoItem.creator") 
+    todo_items: Mapped[list[ToDoItem]] = relationship(back_populates="creator") 
 
 
 def test():

@@ -24,7 +24,7 @@ def sa_to_pydantic(
     name_generator: Callable[[str], str],
     exclude_fields: list[str] | None = None,
     base_model: type[BaseModel] | None = None,
-    circular_depency_strategy: CircularDepencyStrategy
+    circular_depency_strategy: CircularDepencyStrategy = "discard"
 ) -> type[BaseModel]:
     print("sa_to_pydantic ...", model, name_generator(model.__name__))
     reg_before = set(REGISTRY.keys())
