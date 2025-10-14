@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pydantic import BaseModel, Field, create_model
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
@@ -9,13 +10,31 @@ from nicerouter.type_utils import extract_most_inner_type
 from typing import ForwardRef
 from typing import Union
 
-
 CircularDepencyStrategy = Literal["raise", "forwardref", "discard"]
 
-class SaPydanticRegistryNameSpace(dict[str, type[BaseModel]]):
-    pass
+class PydanticRegistryEntry(BaseModel):
+    name: str
+    model: type[BaseModel]
+    sa_model: type[DeclarativeBase] 
+    parent_sa_model: type[DeclarativeBase] | None = None 
+ 
+# Registry mapping model name to list of PydanticRegistryEntrys
+# to handle multiple Pydantic models for the same SA model (e.g. different views)
+class SaPydanticRegistryNameSpace(
+    defaultdict[type[DeclarativeBase], list[PydanticRegistryEntry]]
+):
+    def __init__(self):
+        super().__init__(list)  # list is the default factory
 
-
+    def query_model(self, 
+                    sa_model: type[DeclarativeBase],
+                    query_fun: Callable[[PydanticRegistryEntry], bool],
+                    ) -> PydanticRegistryEntry | None:    
+        values = self.get(sa_model, [])
+        matches = [entry for entry in values if query_fun(entry)]
+        assert len(matches) == 0 or len(matches) == 1  
+        return matches[0] if matches else None
+    
 REGISTRY = SaPydanticRegistryNameSpace()
 
 def sa_to_pydantic(
@@ -40,16 +59,29 @@ def sa_to_pydantic(
     if circular_depency_strategy == "forwardref":
         reg_after = set(REGISTRY.keys()) 
         reg_difference = reg_after - reg_before 
-        newly_added_models: dict[str, type[BaseModel]] = {
+        newly_added_models = {
             k: REGISTRY[k] for k in reg_difference
-        } 
-        for created_model in newly_added_models.values():
-            created_model.model_rebuild(_types_namespace=REGISTRY)
+        }
+
+        for created_models in list(newly_added_models.values()):
+            for created_model in created_models:
+                created_model.model_rebuild(_types_namespace=REGISTRY)
 
     model_name = name_generator(model.__name__)
 
-    resolved_result_model = REGISTRY[model_name]
-    return resolved_result_model
+    resolved_result_model = REGISTRY.query_model(
+        sa_model=model,
+        query_fun=lambda x: x.name == model_name and x.parent_sa_model is None
+        )
+    if not resolved_result_model:
+        print("REGISTRY......")
+        print("-")
+        print(f"{model=} {model_name=}")
+        print("-")
+        pprint(REGISTRY)
+    assert resolved_result_model is not None, f"Pydantic model not found in Registry for {model}"
+    pydantic_model = resolved_result_model.model
+    return pydantic_model
  
 def _sa_to_pydantic(
     *,
@@ -58,7 +90,7 @@ def _sa_to_pydantic(
     exclude_fields: list[str] | None = None,
     base_model: type[BaseModel] | None = None, 
     _stack: set[str] | None = None,
-    _seen: set[str] | None = None,
+    parent_model: type[DeclarativeBase] | None = None,
     circular_depency_strategy: CircularDepencyStrategy
 ) -> type[BaseModel] | ForwardRef | None:
     model_name = name_generator(model.__name__)
@@ -67,11 +99,17 @@ def _sa_to_pydantic(
         assert issubclass(base_model, BaseModel), f"{base_model} not a BaseModel"
 
     _stack = _stack or set()
-    _seen = _seen or set()
-
-    if model_name in REGISTRY:
-        return REGISTRY[model_name]
-
+    
+    if model in REGISTRY:
+        
+        cache = REGISTRY.query_model(
+            sa_model=model, 
+            query_fun=lambda x: x.parent_sa_model is parent_model and x.name == model_name)
+        if cache is not None:
+            assert parent_model is cache.parent_sa_model
+            # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
+            return cache.model
+ 
     if model_name in _stack:
         if circular_depency_strategy == "raise":
             raise ValueError(f"Circular Depency detected: {model_name}")
@@ -79,12 +117,8 @@ def _sa_to_pydantic(
             return ForwardRef(model_name)
         if circular_depency_strategy == "discard":
             # print("DISCARD", model_name, "::", _stack, "::", REGISTRY)
-            return None
-    # if model_name in _seen: 
-    #     # forward reference to handle circular relationships
-    #     return ForwardRef(model_name)
+            return None 
 
-    _seen.add(model_name)
     _stack.add(model_name)
 
     mapper = sa.inspect(model)
@@ -126,9 +160,9 @@ def _sa_to_pydantic(
             model=sa_rel_model,
             name_generator=name_generator,
             exclude_fields=None,
-            _seen=_seen,
             _stack=_stack,
-            circular_depency_strategy=circular_depency_strategy
+            circular_depency_strategy=circular_depency_strategy,
+            parent_model=model
             )
             # circular dependency in field => skip
             if annotation_type is None:
@@ -168,9 +202,15 @@ def _sa_to_pydantic(
         __config__={"from_attributes": True},
         __module__="dynamic",
     )
-    REGISTRY[model_name] = NewModel
+    REGISTRY[model].append(
+        PydanticRegistryEntry(
+            model=NewModel,
+            sa_model=model,
+            parent_sa_model=parent_model,
+            name=model_name
+    ))
 
-    assert model_name in REGISTRY
+    assert model in REGISTRY
 
     # remove built model from stack
     _stack.remove(model_name)

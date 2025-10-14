@@ -38,4 +38,6 @@ def build_normalized_store_object[E](
     empty_slices = {field: dict() for field in normalized_response_type.model_fields}
     empty_slices_store = normalized_response_type(**empty_slices)
     # return the merged empty + normalized slices
-    return {**empty_slices_store.model_dump(), **normalized}
+    store = {**empty_slices_store.model_dump(), **normalized}
+    sorted_store = dict(sorted(store.items()))
+    return sorted_store

@@ -15,12 +15,13 @@ class ToDoItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(sa.Text)
     creator_id: Mapped[int] = mapped_column(sa.ForeignKey("user.id"))
-    creator: Mapped[User] = relationship()
+    creator: Mapped[User] = relationship(back_populates="todo_items")
     done: Mapped[bool] = mapped_column(sa.Boolean)
 
 class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str]
-    todo_items: Mapped[list[ToDoItem]] = relationship() 
+    todo_items: Mapped[list[ToDoItem]] = relationship(back_populates="creator") 
 
+ 

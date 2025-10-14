@@ -71,7 +71,7 @@ def build_normalized_store_type(
 
         normalized_type_ = normalize_type(model_class=inner_type) # type: ignore
         name = inner_type.__name__
-        print("name", name, field)
+         
         normalized_fields[name] = (dict[int, normalized_type_], Field(default_factory=dict))
 
     # Dynamically create a Pydantic model with these fields
