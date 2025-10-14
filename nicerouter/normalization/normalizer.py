@@ -49,9 +49,11 @@ class ObjectNormalizer:
                     # setattr(normalized_obj, field_name, None)
                     normalized_obj[field_name] = None
                     continue
- 
+                  
+                id_field = f"{field_name}_id"
+                assert id_field in normalized_obj, f"Object doesnt have attribute {id_field} from reference field {field_name}"
                 self.normalize(obj=ref_field_obj, id_name=id_name)
-                normalized_obj[f"{field_name}_id"] = normalized_obj[field_name][id_name]
+                normalized_obj[id_field] = normalized_obj[field_name][id_name]
                 del normalized_obj[field_name]
 
             for field_name in list_fields: 
