@@ -38,7 +38,8 @@ def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
 
     for field, field_info in ref_fields.items():  
         name = f"{field}_id"
-        normalized_fields[name] = (int, Field(
+        _type = int if field_info.is_required() else int | None
+        normalized_fields[name] = (_type, Field(
             default=... if field_info.is_required() else None
             )) # field_info
 

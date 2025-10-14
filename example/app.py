@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from nicerouter.routing import create_router_for_db
-from example.model import User, ToDoItem
+from example.model import User, ToDoItem, UrgencyLevel
 from example.db import get_db, init_db
 
 
@@ -24,6 +24,14 @@ app.include_router(
     create_router_for_db(
     db_class=ToDoItem,
     prefix="/todos",
+    get_db_session=get_db
+    )
+)
+
+app.include_router(
+    create_router_for_db(
+    db_class=UrgencyLevel,
+    prefix="/urgency",
     get_db_session=get_db
     )
 )

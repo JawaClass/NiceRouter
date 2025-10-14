@@ -46,7 +46,8 @@ class ObjectNormalizer:
                 ref_field_obj = getattr(obj, field_name)
 
                 if ref_field_obj is None:
-                    setattr(normalized_obj, field_name, None)
+                    # setattr(normalized_obj, field_name, None)
+                    normalized_obj[field_name] = None
                     continue
  
                 self.normalize(obj=ref_field_obj, id_name=id_name)
