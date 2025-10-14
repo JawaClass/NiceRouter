@@ -69,10 +69,13 @@ def create_get_all_route(
                 normalized_response_type=normalized_response_type, 
                 items=rows, # type:ignore
                 response_model=response_model,
-            )
-            
+            ) 
             return store 
-        return rows
+        
+        if response_type == ResponseType.Nested:
+            return [response_model.model_validate(r) for r in rows]
+        
+        raise ValueError(f"Unknown response_type: {response_type}")
 
     normalized_response_type = build_normalized_store_type(model_class=response_model)
     response_model_union = normalized_response_type | list[response_model]
