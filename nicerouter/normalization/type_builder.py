@@ -4,7 +4,9 @@ from pydantic_core import PydanticUndefinedType
 from nicerouter.normalization.type_util import is_reference_type, is_list_reference_type
 from pprint import pprint
 from nicerouter.type_utils import extract_most_inner_type
+from functools import cache
 
+@cache
 def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
      
     model_fields = model_class.model_fields
@@ -52,6 +54,7 @@ def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     )
     return NewModel
 
+@cache
 def build_normalized_store_type(
     model_class: type[BaseModel], 
 ) -> type[BaseModel]:
