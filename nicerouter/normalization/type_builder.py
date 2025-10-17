@@ -48,7 +48,7 @@ def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
         f"Normalized_{model_class.__name__}",
         **normalized_fields,
         __base__=BaseModel,
-        __module__="dynamic",
+        __module__="normalized_types",
     )
     return NewModel
 
@@ -79,7 +79,7 @@ def build_normalized_store_type(
     NormalizedModel = create_model(
         f"Normalized_Store_{model_class.__name__}",
         **normalized_fields,
-        __module__="dynamic",
+        __module__="normalized_store_types",
     )
     return NormalizedModel
 

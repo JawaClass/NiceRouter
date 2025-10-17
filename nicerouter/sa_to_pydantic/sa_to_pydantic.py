@@ -17,23 +17,40 @@ class PydanticRegistryEntry(BaseModel):
     model: type[BaseModel]
     sa_model: type[DeclarativeBase] 
     parent_sa_model: type[DeclarativeBase] | None = None 
- 
-# Registry mapping model name to list of PydanticRegistryEntrys
-# to handle multiple Pydantic models for the same SA model (e.g. different views)
+    namespace: str
+  
 class SaPydanticRegistryNameSpace(
-    defaultdict[type[DeclarativeBase], list[PydanticRegistryEntry]]
+    # {namespace to {pydantic_model_name to entry}}
+    defaultdict[str, dict[str, PydanticRegistryEntry]]
 ):
     def __init__(self):
-        super().__init__(list)  # list is the default factory
+        super().__init__(dict)  # list is the default factory
 
     def query_model(self, 
-                    sa_model: type[DeclarativeBase],
-                    query_fun: Callable[[PydanticRegistryEntry], bool],
+                    namespace: str,
+                    model_name: str, 
+                    _raise: bool = False
                     ) -> PydanticRegistryEntry | None:    
-        values = self.get(sa_model, [])
-        matches = [entry for entry in values if query_fun(entry)]
-        assert len(matches) == 0 or len(matches) == 1  
-        return matches[0] if matches else None
+        models = self.get(namespace)
+        if not models:
+            if not _raise:
+                return None
+            raise KeyError(f"Pydantic model not found. Namespace does not exist. {namespace=}")
+        model = models.get(model_name)
+        if not model:
+            if not _raise:
+                return None
+            raise KeyError(f"Pydantic model not found. Model {model_name=} does not exist in namespace {namespace}.")
+        return model
+     
+    def get_by_name(self, name: str, _raise: bool = False):
+        for namespace in self.keys():
+            for model_name in self[namespace].keys():
+                if model_name == name:
+                    return self[namespace][model_name]
+        if _raise:
+            raise KeyError(f"Model named {name} not in Registry") 
+        return None
     
 REGISTRY = SaPydanticRegistryNameSpace()
 
@@ -45,42 +62,53 @@ def sa_to_pydantic(
     base_model: type[BaseModel] | None = None,
     circular_depency_strategy: CircularDepencyStrategy = "discard"
 ) -> type[BaseModel]:
-    
-    reg_before = set(REGISTRY.keys())
+    """_summary_
 
+    Args:
+        model (type[DeclarativeBase]): _description_
+        name_generator (Callable[[str], str]): _description_
+        exclude_fields (list[str] | None, optional): _description_. Defaults to None.
+        base_model (type[BaseModel] | None, optional): _description_. Defaults to None.
+        circular_depency_strategy (CircularDepencyStrategy, optional): _description_. Defaults to "discard".
+
+    Returns:
+        type[BaseModel]: _description_
+    """
+    
+    namespace = "sa_to_pydantic"
+    
+    created_models: dict[str, type[BaseModel]] = {}
+
+    model_name = name_generator(model.__name__)
+
+    if cache := REGISTRY.get_by_name(name=model_name):
+        return cache.model
+    
     _sa_to_pydantic(
         model=model,
         name_generator=name_generator,
         exclude_fields=exclude_fields,
         base_model=base_model,
+        namespace=namespace,
         circular_depency_strategy=circular_depency_strategy
     ) 
 
     if circular_depency_strategy == "forwardref":
-        reg_after = set(REGISTRY.keys()) 
-        reg_difference = reg_after - reg_before 
-        newly_added_models = {
-            k: REGISTRY[k] for k in reg_difference
-        }
+        _types_namespace = REGISTRY.get(namespace)
+        assert _types_namespace
+        for m_name, m in created_models.items():
+            m.model_rebuild(_types_namespace=_types_namespace) 
+   
+    created_entry = REGISTRY.query_model(namespace=namespace, model_name=model_name)
 
-        for created_models in list(newly_added_models.values()):
-            for created_model in created_models:
-                created_model.model_rebuild(_types_namespace=REGISTRY)
-
-    model_name = name_generator(model.__name__)
-
-    resolved_result_model = REGISTRY.query_model(
-        sa_model=model,
-        query_fun=lambda x: x.name == model_name and x.parent_sa_model is None
-        )
-    if not resolved_result_model:
+    if not created_entry:
         print("REGISTRY......")
         print("-")
         print(f"{model=} {model_name=}")
         print("-")
         pprint(REGISTRY)
-    assert resolved_result_model is not None, f"Pydantic model not found in Registry for {model}"
-    pydantic_model = resolved_result_model.model
+    assert created_entry is not None, f"Pydantic model not found in Registry for {model}"
+    pydantic_model = created_entry.model
     return pydantic_model
  
 def _sa_to_pydantic(
@@ -91,6 +119,8 @@ def _sa_to_pydantic(
     base_model: type[BaseModel] | None = None, 
     _stack: set[str] | None = None,
     parent_model: type[DeclarativeBase] | None = None,
+    namespace: str,
+    created_models: dict[str, type[BaseModel]] = {},
     circular_depency_strategy: CircularDepencyStrategy
 ) -> type[BaseModel] | ForwardRef | None:
     model_name = name_generator(model.__name__)
@@ -99,16 +129,12 @@ def _sa_to_pydantic(
         assert issubclass(base_model, BaseModel), f"{base_model} not a BaseModel"
 
     _stack = _stack or set()
-    
-    if model in REGISTRY:
-        
-        cache = REGISTRY.query_model(
-            sa_model=model, 
-            query_fun=lambda x: x.parent_sa_model is parent_model and x.name == model_name)
-        if cache is not None:
-            assert parent_model is cache.parent_sa_model
-            # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
-            return cache.model
+      
+    if namespace in REGISTRY and model_name in REGISTRY[namespace]:
+        cache = REGISTRY[namespace][model_name]
+        assert parent_model is cache.parent_sa_model
+        # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
+        return cache.model
  
     if model_name in _stack:
         if circular_depency_strategy == "raise":
@@ -162,7 +188,9 @@ def _sa_to_pydantic(
             exclude_fields=None,
             _stack=_stack,
             circular_depency_strategy=circular_depency_strategy,
-            parent_model=model
+            parent_model=model,
+            created_models=created_models,
+            namespace=f"{namespace}.{sa_rel_model.__name__.lower()}"
             )
             # circular dependency in field => skip
             if annotation_type is None:
@@ -194,23 +222,31 @@ def _sa_to_pydantic(
                 raise ValueError(
                     f"Unresolved type inside Mapped {inside_mapped_type=} {inside_mapped_type_origin=}"
                 )
-
+     
     NewModel: type[BaseModel] = create_model(
         model_name,
         **fields,
         __base__=base_model or BaseModel,
         __config__={"from_attributes": True},
-        __module__="dynamic",
+        __module__=namespace,
     )
-    REGISTRY[model].append(
-        PydanticRegistryEntry(
+
+    registry_entry = PydanticRegistryEntry(
             model=NewModel,
             sa_model=model,
             parent_sa_model=parent_model,
-            name=model_name
-    ))
+            name=model_name,
+            namespace=namespace
+    )
+    #print("NEW PydanticRegistryEntry....")
+    #pprint(registry_entry)
 
-    assert model in REGISTRY
+    REGISTRY[namespace][model_name] = registry_entry
+
+    created_models[name] = NewModel
+
+    assert namespace in REGISTRY
+    assert model_name in REGISTRY[namespace]
 
     # remove built model from stack
     _stack.remove(model_name)

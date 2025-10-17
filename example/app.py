@@ -35,3 +35,17 @@ app.include_router(
     get_db_session=get_db
     )
 )
+
+from nicerouter.sa_to_pydantic.sa_to_pydantic import REGISTRY
+
+from pprint import pprint
+
+print("sa_to_pydantic REGISTRY")
+for namespace in REGISTRY:
+    print("Namespace --- ", namespace)
+    for model_name, entry in REGISTRY[namespace].items():
+        if "__Out" in model_name:
+            print("   ", model_name)
+            print("      ", entry.model)
+            pprint(entry.model.model_fields)
+            print("")
