@@ -112,8 +112,8 @@ def sa_to_pydantic(
     assert created_entry is not None, f"Pydantic model not found in Registry for {model}"
     pydantic_model = created_entry.model
 
-    print("sa_to_pydantic :: created model ", model_name)
-    print(pydantic_model.model_fields)
+    # print("sa_to_pydantic :: created model ", model_name)
+    # print(pydantic_model.model_fields)
     return pydantic_model
  
 

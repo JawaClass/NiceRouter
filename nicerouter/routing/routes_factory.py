@@ -72,11 +72,7 @@ def create_get_all_route(
             filter_by=filter_by,
             exclude_fields=exclude_fields
         )
-    
-        print("rows....", len(rows))
-        for r in rows:
-            print(" - ", r) 
-
+      
         if response_type == ResponseType.Normalized:
             store = build_normalized_store_object(
                 normalized_response_type=normalized_response_type, 
@@ -86,8 +82,7 @@ def create_get_all_route(
             ) 
             return store 
         
-        if response_type == ResponseType.Nested:
-            print("returning nested.... VALIDATE PYDANTIC")
+        if response_type == ResponseType.Nested: 
             # only pass an dictionary,
             # otherwise pydantic will lazy load fields not loaded and crash async context
             validated_rows =  [response_model.model_validate(r.__dict__) for r in rows] 
