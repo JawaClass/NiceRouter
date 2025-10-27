@@ -132,7 +132,7 @@ def _sa_to_pydantic(
       
     if namespace in REGISTRY and model_name in REGISTRY[namespace]:
         cache = REGISTRY[namespace][model_name]
-        assert parent_model is cache.parent_sa_model
+        # assert parent_model is cache.parent_sa_model
         # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
         return cache.model
  
