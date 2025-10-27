@@ -15,6 +15,9 @@ class ObjectNormalizer:
             *,
             obj: BaseModel,
             id_name: str = "id",
+            # pass an optional callback to link a reference field to the correct id field when its 
+            # not called {reference_field}_id
+            ref2idfield_resolver: Callable[[BaseModel, str], str] | None = None
         ) -> dict[str, Any]:
             
             # get or create slice for this type
@@ -49,9 +52,16 @@ class ObjectNormalizer:
                     # setattr(normalized_obj, field_name, None)
                     normalized_obj[field_name] = None
                     continue
-                  
+                
+                # check if reference field is linked by expected id field name
+                # otherwise, try resolve it
                 id_field = f"{field_name}_id"
-                assert id_field in normalized_obj, f"Object doesnt have attribute {id_field} from reference field {field_name}"
+                if id_field not in normalized_obj:
+                    if not ref2idfield_resolver:
+                          msg = f"Object doesnt have attribute {id_field} from reference field {field_name}. Add resolver argument."
+                          raise ValueError(msg)
+                    id_field = ref2idfield_resolver(obj, field_name)
+
                 self.normalize(obj=ref_field_obj, id_name=id_name)
                 normalized_obj[id_field] = normalized_obj[field_name][id_name]
                 del normalized_obj[field_name]
