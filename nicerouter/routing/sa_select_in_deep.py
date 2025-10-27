@@ -1,6 +1,6 @@
 from collections.abc import Callable
  
-from typing import Any, ForwardRef, get_args
+from typing import Any, ForwardRef, Iterable, Sequence, get_args
 
 import sqlalchemy as sa
 from pydantic import BaseModel
@@ -10,15 +10,13 @@ from sqlalchemy.orm import Load, selectinload
 from nicerouter.type_utils import extract_most_inner_type
 
 
-
-
 def select_relationships_deep(
     db_class: type[Any],
     mask_class: type[BaseModel],
     sa_load_method: Callable[[Any], Load] = selectinload,  # type:ignore
     max_depth: int = 10,
     depth: int = 0,
-    exclude_field_names: list[str] | None = None
+    exclude_field_names: Iterable[str] | None = None
 ) -> list[Load]:
     """Creates a hierarchy of selectinload statements for a SQLAlchemy ORM class,
     filtered by a Pydantic response model.
@@ -41,7 +39,7 @@ def select_relationships_deep(
         
         if field_name in exclude_fields_set:
             continue
-        
+
         query = sa_load_method(getattr(db_class, field_name))
         rel = relationships[field_name]
         rel_class = rel.mapper.class_
@@ -55,14 +53,17 @@ def select_relationships_deep(
  
         # Recurse
         if isinstance(child_model, type) and issubclass(child_model, BaseModel):
-            exclude_fields_set_next_level = {".".join(x.split(".")[1:]) for x in exclude_fields_set if x.startswith(f"{field_name}.")}
+            exclude_fields_set_next_level = {".".join(x.split(".")[1:]) 
+                                             for x in exclude_fields_set 
+                                             if x.startswith(f"{field_name}.")}
+            
             child_loads = select_relationships_deep(
                 rel_class,
                 child_model,
                 sa_load_method,
                 depth=depth + 1,
                 max_depth=max_depth,
-                exclude_fields_set=exclude_fields_set_next_level
+                exclude_field_names=exclude_fields_set_next_level
             )
             query = query.options(*child_loads)
 
