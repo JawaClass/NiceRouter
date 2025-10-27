@@ -78,14 +78,15 @@ async def get_all[E](
     db: AsyncSession,
     limit: int,
     offset: int,
-    query: sa.Select | None = None,
-    # query_filter: dict[str, Any] | None = None,
+    query: sa.Select | None = None, 
     sort_by: str | None = None,
     filter_by: str | None = None,
+    exclude_fields: str | None = None,
 ):
+    exclude_fields_list = (exclude_fields or "").split(",")
     # main select
     stmt = query or sa.select(db_class).options(
-        *select_relationships_deep(db_class, response_model)
+        *select_relationships_deep(db_class, response_model, exclude_field_names=exclude_fields_list)
     )
 
     # add filter

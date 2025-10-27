@@ -29,7 +29,7 @@ def create_get_all_route(
     tags = routes_service.tags_from_prefix(prefix)
     fields_lookup = routes_service.get_db_class_fields(db_class=db_class)
 
-    fields_filter_by_example = ",".join([f for f in fields_lookup])
+    available_fields = ",".join([f for f in fields_lookup])
 
     async def endpoint(
         request: Request,
@@ -51,7 +51,13 @@ def create_get_all_route(
         filter_by: Annotated[
             str | None,
             Query(
-                description=f"Columns to filter by. Fields sperated by ;  Example: {fields_filter_by_example}",
+                description=f"Columns to filter by. Fields sperated by ;  Example: {available_fields}",
+            ),
+        ] = None,
+        exclude_fields: Annotated[
+            str | None,
+            Query(
+                description=f"Columns to exclude from response. Fields sperated by ;  Example: {available_fields}",
             ),
         ] = None,
     ):
@@ -64,6 +70,7 @@ def create_get_all_route(
             query=query,
             sort_by=sort_by,
             filter_by=filter_by,
+            exclude_fields=exclude_fields
         )
 
         if response_type == ResponseType.Normalized:

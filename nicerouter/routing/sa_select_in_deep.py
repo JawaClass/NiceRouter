@@ -18,6 +18,7 @@ def select_relationships_deep(
     sa_load_method: Callable[[Any], Load] = selectinload,  # type:ignore
     max_depth: int = 10,
     depth: int = 0,
+    exclude_field_names: list[str] | None = None
 ) -> list[Load]:
     """Creates a hierarchy of selectinload statements for a SQLAlchemy ORM class,
     filtered by a Pydantic response model.
@@ -32,12 +33,15 @@ def select_relationships_deep(
     # Get Pydantic model field info
     mask_struct: dict[str, FieldInfo] = mask_class.model_fields
 
-    loads: list[Load] = []
-
+    loads: list[Load] = [] 
+    exclude_fields_set = set(exclude_field_names or [])
     for field_name, field_info in mask_struct.items():
         if field_name not in relationships:
             continue
-       
+        
+        if field_name in exclude_fields_set:
+            continue
+        
         query = sa_load_method(getattr(db_class, field_name))
         rel = relationships[field_name]
         rel_class = rel.mapper.class_
