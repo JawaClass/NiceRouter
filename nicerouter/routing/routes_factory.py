@@ -23,6 +23,7 @@ def create_get_all_route(
     response_model: type[BaseModel],
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
     query: sa.Select | None = None,
+    normalizer: ObjectNormalizer | None = None,
     prefix: str,
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
@@ -70,6 +71,7 @@ def create_get_all_route(
                 normalized_response_type=normalized_response_type, 
                 items=rows, # type:ignore
                 response_model=response_model,
+                normalizer=normalizer
             ) 
             return store 
         
