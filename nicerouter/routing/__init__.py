@@ -92,6 +92,7 @@ def create_router(
                 get_db_session=get_db_session,
                 response_model=config.get_all_route.response_model,
                 prefix=prefix,
+                normalizer=config.get_all_route.normalizer,
             ),
         )
 
