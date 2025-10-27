@@ -4,6 +4,7 @@ from nicerouter.normalization.normalizer import ObjectNormalizer
   
 def normalize_rows[E](
     *,
+    normalizer: ObjectNormalizer,
     # the pydantic model of the passed rows
     response_model: type[BaseModel],
     # the items that should be normalized
@@ -12,9 +13,7 @@ def normalize_rows[E](
 ): 
     if not isinstance(rows, Iterable):
         rows = [rows]
-
-    normalizer = ObjectNormalizer()
-
+ 
     for row in rows:
         obj = response_model.model_validate(row)
         normalizer.normalize(obj=obj, id_name="id")
@@ -22,13 +21,17 @@ def normalize_rows[E](
 
 
 def build_normalized_store_object[E](
-    *,
+    *, 
     normalized_response_type: type[BaseModel],
     response_model: type[BaseModel],
     items: list[type[E]], 
-):
+    normalizer: ObjectNormalizer | None = None
+):  
+    
+    normalizer = normalizer or ObjectNormalizer()
     # normalize all the objects
     normalized = normalize_rows( 
+        normalizer=normalizer,
         response_model=response_model,
         rows=items,
     ) 

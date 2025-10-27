@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.routing import routes_service
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 from nicerouter.routing.models import ResponseType
@@ -97,6 +98,7 @@ def create_get_by_id_route(
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
     query: sa.Select | None,
     prefix: str,
+    normalizer: ObjectNormalizer | None = None,
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
 
@@ -122,6 +124,7 @@ def create_get_by_id_route(
                 normalized_response_type=normalized_response_type, 
                 items=[item],
                 response_model=response_model,
+                normalizer=normalizer
             )
 
         return item
@@ -144,7 +147,8 @@ def create_post_route(
     input_model: type[BaseModel],
     response_model: type[BaseModel],
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    prefix: str,
+    prefix: str, 
+    normalizer: ObjectNormalizer | None = None,
     preprocessor_input: (
         Callable[[BaseModel, AsyncSession], Awaitable[BaseModel]] | None
     ) = None,
@@ -182,6 +186,7 @@ def create_post_route(
                 normalized_response_type=normalized_response_type, 
                 items=[item],
                 response_model=response_model,
+                normalizer=normalizer
             )
 
         return item

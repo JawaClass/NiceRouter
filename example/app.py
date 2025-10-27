@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.routing import create_router_for_db
 from example.model import User, ToDoItem, UrgencyLevel
 from example.db import get_db, init_db
@@ -10,8 +11,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan) # type: ignore
-
-
+ 
+ 
 app.include_router(
     create_router_for_db(
     db_class=User,

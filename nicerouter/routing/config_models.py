@@ -5,24 +5,35 @@ import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nicerouter.normalization.normalizer import ObjectNormalizer
+
 
 class GetByIdConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     response_model: type[BaseModel]
+    normalizer: ObjectNormalizer | None = None
     query: sa.Select | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class GetAllConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     response_model: type[BaseModel]
+    normalizer: ObjectNormalizer | None = None
     query: sa.Select | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 type PreProcessorCallable[INPUT_MODEL] = Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]]
 
 class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     input_model: type[INPUT_MODEL]
     response_model: type[BaseModel]
+    normalizer: ObjectNormalizer | None = None
     preprocessor_input: Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]] | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):

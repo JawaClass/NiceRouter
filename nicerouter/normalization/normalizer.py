@@ -4,10 +4,16 @@ from pydantic import BaseModel
 from nicerouter.type_utils import extract_most_inner_type
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 
+type IdResolver = Callable[[BaseModel, str], str]
 
 class ObjectNormalizer:
 
-    def __init__(self) -> None:
+    def __init__(self,
+            # pass an optional callback to link a reference field to the correct id field when its 
+            # not called {reference_field}_id
+            ref2idfield_resolver: IdResolver | None = None):
+         
+         self.ref2idfield_resolver = ref2idfield_resolver
          self.store = defaultdict(dict)
         
     def normalize(
@@ -15,11 +21,10 @@ class ObjectNormalizer:
             *,
             obj: BaseModel,
             id_name: str = "id",
-            # pass an optional callback to link a reference field to the correct id field when its 
-            # not called {reference_field}_id
-            ref2idfield_resolver: Callable[[BaseModel, str], str] | None = None
+            ref2idfield_resolver: IdResolver | None = None 
         ) -> dict[str, Any]:
             
+            ref2idfield_resolver = ref2idfield_resolver or self.ref2idfield_resolver
             # get or create slice for this type
             store_slice = self.store[obj.__class__.__name__]
 
@@ -57,8 +62,8 @@ class ObjectNormalizer:
                 # otherwise, try resolve it
                 id_field = f"{field_name}_id"
                 if id_field not in normalized_obj:
-                    if not ref2idfield_resolver:
-                          msg = f"Object doesnt have attribute {id_field} from reference field {field_name}. Add resolver argument."
+                    if not ref2idfield_resolver: 
+                          msg = f"Object {type(obj)}(...) doesnt have attribute {id_field} from reference field {field_name}. Add resolver argument."
                           raise ValueError(msg)
                     id_field = ref2idfield_resolver(obj, field_name)
 
