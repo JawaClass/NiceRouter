@@ -159,11 +159,15 @@ def _sa_to_pydantic(
     name2annotation = get_type_hints(model)
 
     fields: dict[str, Any] = {}
-
-    for name, annotation in name2annotation.items():
-
+ 
+    for name, annotation in name2annotation.items(): 
+        
         if exclude_fields and name in exclude_fields:
             continue
+        
+        field_kwargs = {}
+        if allow_optional and allow_optional(model, name):
+            field_kwargs["default"] = None
 
         is_relationship = name in relationships
 
@@ -173,21 +177,16 @@ def _sa_to_pydantic(
 
         is_union_type: bool = inside_mapped_type_origin in (Union, UnionType)
         # extract primitive fields
-        if not is_relationship:
-            field_config = ...
-            if allow_optional and allow_optional(model, name):
-                print("is_optional....", model_name, name)
-                field_config = Field(default=None)
-            elif is_union_type:
+        if not is_relationship: 
+            if is_union_type:
                 union_childs = get_args(inside_mapped_type)
                 is_optional = type(None) in union_childs
                 if is_optional:
-                    print("is_optional....", name, model_name)
-                    field_config = Field(default=None)
+                    field_kwargs["default"] = None 
 
             fields[name] = (
                 inside_mapped_type,
-                field_config,
+                Field(**field_kwargs),
             )
         else:
             # extract reference fields
@@ -209,32 +208,22 @@ def _sa_to_pydantic(
 
             if is_union_type:
                 union_childs = get_args(inside_mapped_type)
- 
                 union_childs_replaced_sa = [
                     annotation_type if typ is sa_rel_model else typ
                     for typ in union_childs
                 ]
                 union_type = Union[tuple(union_childs_replaced_sa)]
-
-                is_optional = type(None) in union_childs or (allow_optional and allow_optional(model, name))
+                is_optional = type(None) in union_childs
                 if is_optional:
-                    print("is_optional....", name, model_name)
-                    fields[name] = (
-                        union_type,
-                        Field(default=None),
-                    )
-                else:
-                    fields[name] = (union_type, ...)
-            elif inside_mapped_type_origin is list:
-                if allow_optional and allow_optional(model, name):
-                    fields[name] = (
-                        list[annotation_type],
-                        Field(default=None),
-                    )
-                else: 
-                    fields[name] = list[annotation_type]
-            elif inside_mapped_type_origin is None:
-                fields[name] = annotation_type
+                    field_kwargs["default"] = None 
+                fields[name] = (
+                    union_type,
+                    Field(**field_kwargs),
+                ) 
+            elif inside_mapped_type_origin is list: # list ref field
+                fields[name] = (list[annotation_type], Field(**field_kwargs))
+            elif inside_mapped_type_origin is None: # singular ref field
+                fields[name] = (annotation_type, Field(**field_kwargs)) 
             else:
                 raise ValueError(
                     f"Unresolved type inside Mapped {inside_mapped_type=} {inside_mapped_type_origin=}"
