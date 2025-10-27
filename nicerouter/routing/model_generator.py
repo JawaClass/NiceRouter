@@ -15,7 +15,8 @@ def generate_model_schema_out(
         exclude_fields=exclude_fields,
         name_generator=lambda name: f"{name}__Out",
         base_model=base_model,
-        circular_depency_strategy="discard"
+        circular_depency_strategy="discard",
+        allow_optional=lambda model, field_name: True,
     )
 
 

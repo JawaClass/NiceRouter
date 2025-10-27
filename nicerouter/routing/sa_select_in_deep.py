@@ -55,12 +55,14 @@ def select_relationships_deep(
  
         # Recurse
         if isinstance(child_model, type) and issubclass(child_model, BaseModel):
+            exclude_fields_set_next_level = {".".join(x.split(".")[1:]) for x in exclude_fields_set if x.startswith(f"{field_name}.")}
             child_loads = select_relationships_deep(
                 rel_class,
                 child_model,
                 sa_load_method,
                 depth=depth + 1,
                 max_depth=max_depth,
+                exclude_fields_set=exclude_fields_set_next_level
             )
             query = query.options(*child_loads)
 

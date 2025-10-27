@@ -5,11 +5,10 @@ from fastapi import HTTPException
 from pydantic import BaseModel, create_model, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, load_only
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 from pprint import pprint
-
-
+ 
 async def scalar_or_throw_by_id(
     *,
     db: AsyncSession,
@@ -83,9 +82,18 @@ async def get_all[E](
     filter_by: str | None = None,
     exclude_fields: str | None = None,
 ):
-    exclude_fields_list = (exclude_fields or "").split(",")
-    # main select
+    exclude_fields_list = (exclude_fields or "").replace(" ", "").split(",")
+    exclude_fields_set = set(exclude_fields_list)
+     # main select
+    # db_class
+    db_class_fields = get_db_class_fields(db_class)
+    load_only_fields = [field for name, field in db_class_fields.items() 
+                        if name not in exclude_fields_set and not field.property._is_relationship]
+    options = []
+    if len(load_only_fields):
+        options.append(load_only(*load_only_fields))
     stmt = query or sa.select(db_class).options(
+        *options,
         *select_relationships_deep(db_class, response_model, exclude_field_names=exclude_fields_list)
     )
 
@@ -106,7 +114,7 @@ async def get_all[E](
         stmt = stmt.order_by(*order_columns)
 
     result = await db.execute(stmt)
-    return result.scalars()
+    return result.scalars().all()
  
 
  

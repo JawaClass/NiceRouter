@@ -60,7 +60,8 @@ def sa_to_pydantic(
     name_generator: Callable[[str], str],
     exclude_fields: list[str] | None = None,
     base_model: type[BaseModel] | None = None,
-    circular_depency_strategy: CircularDepencyStrategy = "discard"
+    circular_depency_strategy: CircularDepencyStrategy = "discard",
+    allow_optional: Callable[[type[DeclarativeBase], str], bool] | None = None
 ) -> type[BaseModel]:
     """_summary_
 
@@ -90,7 +91,8 @@ def sa_to_pydantic(
         exclude_fields=exclude_fields,
         base_model=base_model,
         namespace=namespace,
-        circular_depency_strategy=circular_depency_strategy
+        circular_depency_strategy=circular_depency_strategy,
+        allow_optional=allow_optional,
     ) 
 
     if circular_depency_strategy == "forwardref":
@@ -109,8 +111,12 @@ def sa_to_pydantic(
         pprint(REGISTRY)
     assert created_entry is not None, f"Pydantic model not found in Registry for {model}"
     pydantic_model = created_entry.model
+
+    print("sa_to_pydantic :: created model ", model_name)
+    print(pydantic_model.model_fields)
     return pydantic_model
  
+
 def _sa_to_pydantic(
     *,
     model: type[DeclarativeBase],
@@ -121,7 +127,8 @@ def _sa_to_pydantic(
     parent_model: type[DeclarativeBase] | None = None,
     namespace: str,
     created_models: dict[str, type[BaseModel]] = {},
-    circular_depency_strategy: CircularDepencyStrategy
+    circular_depency_strategy: CircularDepencyStrategy,
+    allow_optional: Callable[[type[DeclarativeBase], str], bool] | None = None
 ) -> type[BaseModel] | ForwardRef | None:
     model_name = name_generator(model.__name__)
     # print("_sa_to_pydantic ..", model)
@@ -168,10 +175,14 @@ def _sa_to_pydantic(
         # extract primitive fields
         if not is_relationship:
             field_config = ...
-            if is_union_type:
+            if allow_optional and allow_optional(model, name):
+                print("is_optional....", model_name, name)
+                field_config = Field(default=None)
+            elif is_union_type:
                 union_childs = get_args(inside_mapped_type)
                 is_optional = type(None) in union_childs
                 if is_optional:
+                    print("is_optional....", name, model_name)
                     field_config = Field(default=None)
 
             fields[name] = (
@@ -198,16 +209,16 @@ def _sa_to_pydantic(
 
             if is_union_type:
                 union_childs = get_args(inside_mapped_type)
-
-                is_optional = type(None) in union_childs
-
+ 
                 union_childs_replaced_sa = [
                     annotation_type if typ is sa_rel_model else typ
                     for typ in union_childs
                 ]
                 union_type = Union[tuple(union_childs_replaced_sa)]
 
+                is_optional = type(None) in union_childs or (allow_optional and allow_optional(model, name))
                 if is_optional:
+                    print("is_optional....", name, model_name)
                     fields[name] = (
                         union_type,
                         Field(default=None),
@@ -215,7 +226,13 @@ def _sa_to_pydantic(
                 else:
                     fields[name] = (union_type, ...)
             elif inside_mapped_type_origin is list:
-                fields[name] = list[annotation_type]
+                if allow_optional and allow_optional(model, name):
+                    fields[name] = (
+                        list[annotation_type],
+                        Field(default=None),
+                    )
+                else: 
+                    fields[name] = list[annotation_type]
             elif inside_mapped_type_origin is None:
                 fields[name] = annotation_type
             else:

@@ -10,6 +10,9 @@ from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
 class Base(DeclarativeBase):
     pass
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} {self.__dict__}>"
+
 
 class UrgencyLevel(Base):
     __tablename__ = "urgency_level"
