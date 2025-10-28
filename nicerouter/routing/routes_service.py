@@ -9,6 +9,29 @@ from sqlalchemy.orm import DeclarativeBase, load_only
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 from pprint import pprint
 
+from sqlalchemy.orm.collections import InstrumentedList
+from sqlalchemy.orm import DeclarativeBase
+
+
+def sa_to_dict(obj):
+    """
+    transforms a SQLAlchemy declarative base object to a plain dictionary
+    so pydantic can consume it without accessing not loaded relationships which would raise errors
+    """
+    if isinstance(obj, DeclarativeBase):
+        # print("todict ::", "DeclarativeBase", type(obj))
+        return dict(
+            [
+                (key, sa_to_dict(value))
+                for key, value in obj.__dict__.items()
+                if not callable(value) and not key.startswith("_")
+            ]
+        )
+    if isinstance(obj, InstrumentedList):
+        # print("todict ::", "InstrumentedList", type(obj))
+        return [sa_to_dict(v) for v in obj]
+    return obj
+
 
 async def scalar_or_throw_by_id(
     *,

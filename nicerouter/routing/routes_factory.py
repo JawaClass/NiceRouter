@@ -14,32 +14,7 @@ from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 from nicerouter.routing.models import ResponseType
 from nicerouter.normalization.object_builders import build_normalized_store_object
 from nicerouter.normalization.type_builder import build_normalized_store_type
-from nicerouter.routing.routes_service import tags_from_prefix
-
-
-def todict(obj, classkey=None):
-    if isinstance(obj, dict):
-        data = {}
-        for k, v in obj.items():
-            data[k] = todict(v, classkey)
-        return data
-    elif hasattr(obj, "_ast"):
-        return todict(obj._ast())
-    elif hasattr(obj, "__iter__") and not isinstance(obj, str):
-        return [todict(v, classkey) for v in obj]
-    elif hasattr(obj, "__dict__"):
-        data = dict(
-            [
-                (key, todict(value, classkey))
-                for key, value in obj.__dict__.items()
-                if not callable(value) and not key.startswith("_")
-            ]
-        )
-        if classkey is not None and hasattr(obj, "__class__"):
-            data[classkey] = obj.__class__.__name__
-        return data
-    else:
-        return obj
+from nicerouter.routing.routes_service import tags_from_prefix, sa_to_dict
 
 
 def create_get_all_route(
@@ -115,7 +90,9 @@ def create_get_all_route(
         if response_type == ResponseType.Nested:
             # only pass an dictionary,
             # otherwise pydantic will lazy load fields not loaded and crash async context
-            validated_rows = [response_model.model_validate(todict(r)) for r in rows]
+            validated_rows = [
+                response_model.model_validate(sa_to_dict(r)) for r in rows
+            ]
             return validated_rows
 
         raise HTTPException(400, f"Unknown response_type: {response_type}")
@@ -186,7 +163,7 @@ def create_get_by_id_route(
             )
 
         if response_type == ResponseType.Nested:
-            validated_item = response_model.model_validate(todict(item))
+            validated_item = response_model.model_validate(sa_to_dict(item))
             return validated_item
 
         raise HTTPException(400, f"Unknown response_type: {response_type}")
