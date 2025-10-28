@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
-from pprint import pprint 
+from pprint import pprint
 from pydantic import BaseModel
 from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
 
+
 class Base(DeclarativeBase):
-        pass
+    pass
+
 
 class B(Base):
     __tablename__ = "b"
     id: Mapped[int] = mapped_column(primary_key=True)
     a_id: Mapped[int] = mapped_column(sa.ForeignKey("a_table.id"))
     a_id2: Mapped[int | None] = mapped_column(sa.ForeignKey("a_table.id"))
+
 
 class A(Base):
     __tablename__ = "a_table"
@@ -25,7 +28,7 @@ class A(Base):
     b: Mapped[B | None] = relationship(foreign_keys=[B.a_id2])
     b2: Mapped[B] = relationship(foreign_keys=[B.a_id])
 
- 
+
 class ToDoItem(Base):
     __tablename__ = "todo_item"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,18 +37,18 @@ class ToDoItem(Base):
     creator: Mapped[User] = relationship()
     done: Mapped[bool] = mapped_column(sa.Boolean)
 
+
 class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str]
-    todo_items: Mapped[list[ToDoItem]] = relationship(back_populates="creator") 
+    todo_items: Mapped[list[ToDoItem]] = relationship(back_populates="creator")
 
 
 def test():
-    
 
-    model = sa_to_pydantic(model=A, name_generator=lambda x : x)
-    
+    model = sa_to_pydantic(model=A, name_generator=lambda x: x)
+
     print("pydantic_model", model)
     pprint(model.model_fields)
 
@@ -74,6 +77,7 @@ def test2():
         base_model=BaseModel,
     )
 
+
 def test3():
     sa_to_pydantic(
         model=User,
@@ -88,6 +92,7 @@ def test3():
         name_generator=lambda name: f"{name}__In",
         base_model=BaseModel,
     )
+
 
 if __name__ == "__main__":
     test3()
