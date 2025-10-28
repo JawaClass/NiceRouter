@@ -32,26 +32,21 @@ def sa_to_dict(obj, visited=None):
     # Avoid recursion loops on circular references
     obj_id = id(obj)
     if obj_id in visited:
-        # You can also return obj.id or None depending on your needs
-        print("obj_id in visited", visited[obj_id])
-        # input(",...")
-        return visited[obj_id]  # None # getattr(obj, "id", None)
+        return visited[obj_id]
     visited[obj_id] = obj
 
     # ORM-mapped class instance
     if isinstance(obj, DeclarativeBase):
         result = {}
-        state = instance_state(obj)
-        for key, attr_state in state.attrs.items():
-            # Skip unloaded relationships to avoid lazy-loading errors
-            if not attr_state.loaded_value and not attr_state.history.has_changes():
-                continue
-            try:
-                value = getattr(obj, key)
-                result[key] = sa_to_dict(value, visited)
-            except Exception:
-                # Some unloaded or inaccessible attributes will raise here
-                continue
+
+        for key, col_prop in obj.__mapper__.column_attrs.items():
+            result[key] = getattr(obj, key)
+
+        for key, rel_prop in obj.__mapper__.relationships.items():
+            # only serialize if the relationship is loaded
+            if key in obj.__dict__:
+                result[key] = sa_to_dict(getattr(obj, key), visited)
+
         return result
 
     # Handle list-like relationships
