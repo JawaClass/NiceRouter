@@ -13,23 +13,52 @@ from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.orm import DeclarativeBase
 
 
-def sa_to_dict(obj):
+from sqlalchemy.orm.attributes import instance_state
+
+
+def sa_to_dict(obj, visited=None):
     """
-    transforms a SQLAlchemy declarative base object to a plain dictionary
-    so pydantic can consume it without accessing not loaded relationships which would raise errors
+    Safely convert a SQLAlchemy DeclarativeBase object (or list of them)
+    into plain Python dictionaries — avoiding circular references and
+    unloaded relationships.
     """
+
+    if isinstance(obj, (type(None), int, float, str, bool)):
+        return obj
+
+    if visited is None:
+        visited = dict()
+
+    # Avoid recursion loops on circular references
+    obj_id = id(obj)
+    if obj_id in visited:
+        # You can also return obj.id or None depending on your needs
+        print("obj_id in visited", visited[obj_id])
+        # input(",...")
+        return visited[obj_id]  # None # getattr(obj, "id", None)
+    visited[obj_id] = obj
+
+    # ORM-mapped class instance
     if isinstance(obj, DeclarativeBase):
-        # print("todict ::", "DeclarativeBase", type(obj))
-        return dict(
-            [
-                (key, sa_to_dict(value))
-                for key, value in obj.__dict__.items()
-                if not callable(value) and not key.startswith("_")
-            ]
-        )
+        result = {}
+        state = instance_state(obj)
+        for key, attr_state in state.attrs.items():
+            # Skip unloaded relationships to avoid lazy-loading errors
+            if not attr_state.loaded_value and not attr_state.history.has_changes():
+                continue
+            try:
+                value = getattr(obj, key)
+                result[key] = sa_to_dict(value, visited)
+            except Exception:
+                # Some unloaded or inaccessible attributes will raise here
+                continue
+        return result
+
+    # Handle list-like relationships
     if isinstance(obj, InstrumentedList):
-        # print("todict ::", "InstrumentedList", type(obj))
-        return [sa_to_dict(v) for v in obj]
+        return [sa_to_dict(item, visited) for item in obj]
+
+    # Return plain value (non-SQLAlchemy type)
     return obj
 
 

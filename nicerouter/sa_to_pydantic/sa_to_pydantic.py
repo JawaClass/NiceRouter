@@ -162,7 +162,6 @@ def _sa_to_pydantic(
     exclude_fields: list[str] | None = None,
     base_model: type[BaseModel] | None = None,
     _stack: set[str] | None = None,
-    _seen: set[str] | None = None,
     parent_model: type[DeclarativeBase] | None = None,
     namespace: str,
     created_models: dict[str, type[BaseModel]] = {},
@@ -173,13 +172,6 @@ def _sa_to_pydantic(
     # print("_sa_to_pydantic ..", model)
     if base_model:
         assert issubclass(base_model, BaseModel), f"{base_model} not a BaseModel"
-
-    _seen = _seen or set()
-
-    if model_name in _seen:
-        return None
-
-    _seen.add(model_name)
 
     _stack = _stack or set()
 
@@ -248,7 +240,6 @@ def _sa_to_pydantic(
                 name_generator=name_generator,
                 exclude_fields=None,
                 _stack=_stack,
-                _seen=_seen,
                 circular_depency_strategy=circular_depency_strategy,
                 parent_model=model,
                 created_models=created_models,
