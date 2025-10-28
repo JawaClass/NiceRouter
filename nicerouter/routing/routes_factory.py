@@ -13,8 +13,33 @@ from nicerouter.routing import routes_service
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 from nicerouter.routing.models import ResponseType
 from nicerouter.normalization.object_builders import build_normalized_store_object
-from nicerouter.normalization.type_builder import build_normalized_store_type 
-from nicerouter.routing.routes_service import tags_from_prefix 
+from nicerouter.normalization.type_builder import build_normalized_store_type
+from nicerouter.routing.routes_service import tags_from_prefix
+
+
+def todict(obj, classkey=None):
+    if isinstance(obj, dict):
+        data = {}
+        for k, v in obj.items():
+            data[k] = todict(v, classkey)
+        return data
+    elif hasattr(obj, "_ast"):
+        return todict(obj._ast())
+    elif hasattr(obj, "__iter__") and not isinstance(obj, str):
+        return [todict(v, classkey) for v in obj]
+    elif hasattr(obj, "__dict__"):
+        data = dict(
+            [
+                (key, todict(value, classkey))
+                for key, value in obj.__dict__.items()
+                if not callable(value) and not key.startswith("_")
+            ]
+        )
+        if classkey is not None and hasattr(obj, "__class__"):
+            data[classkey] = obj.__class__.__name__
+        return data
+    else:
+        return obj
 
 
 def create_get_all_route(
@@ -28,7 +53,6 @@ def create_get_all_route(
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
     fields_lookup = routes_service.get_db_class_fields(db_class=db_class)
-
     available_fields = ",".join([f for f in fields_lookup])
 
     async def endpoint(
@@ -61,6 +85,12 @@ def create_get_all_route(
             ),
         ] = None,
     ):
+
+        if response_type == ResponseType.Normalized and exclude_fields:
+            raise HTTPException(
+                400, "Cannot use exclude_fields with Normalized response_type"
+            )
+
         rows = await routes_service.get_all(
             db_class=db_class,
             response_model=response_model,
@@ -70,25 +100,25 @@ def create_get_all_route(
             query=query,
             sort_by=sort_by,
             filter_by=filter_by,
-            exclude_fields=exclude_fields
+            exclude_fields=exclude_fields,
         )
-      
+
         if response_type == ResponseType.Normalized:
             store = build_normalized_store_object(
-                normalized_response_type=normalized_response_type, 
-                items=rows, # type:ignore
+                normalized_response_type=normalized_response_type,
+                items=rows,  # type:ignore
                 response_model=response_model,
-                normalizer=normalizer
-            ) 
-            return store 
-        
-        if response_type == ResponseType.Nested: 
+                normalizer=normalizer,
+            )
+            return store
+
+        if response_type == ResponseType.Nested:
             # only pass an dictionary,
             # otherwise pydantic will lazy load fields not loaded and crash async context
-            validated_rows =  [response_model.model_validate(r.__dict__) for r in rows] 
+            validated_rows = [response_model.model_validate(todict(r)) for r in rows]
             return validated_rows
-        
-        raise ValueError(f"Unknown response_type: {response_type}")
+
+        raise HTTPException(400, f"Unknown response_type: {response_type}")
 
     normalized_response_type = build_normalized_store_type(model_class=response_model)
     response_model_union = normalized_response_type | list[response_model]
@@ -113,6 +143,8 @@ def create_get_by_id_route(
     normalizer: ObjectNormalizer | None = None,
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
+    fields_lookup = routes_service.get_db_class_fields(db_class=db_class)
+    available_fields = ",".join([f for f in fields_lookup])
 
     async def endpoint(
         id: int,
@@ -122,24 +154,42 @@ def create_get_by_id_route(
                 description="returns the requested entities as a normalized store object perfectly for redux based state management",
             ),
         ] = ResponseType.Nested,
+        exclude_fields: Annotated[
+            str | None,
+            Query(
+                description=f"Columns to exclude from response. Fields sperated by ;  Example: {available_fields}",
+            ),
+        ] = None,
         db: AsyncSession = Depends(get_db_session),
     ):
-        stmt = query or sa.select(db_class).options(
-            *select_relationships_deep(db_class, response_model),
-        )
-        stmt = stmt.where(db_class.id == id)
-        item = await routes_service.scalar_or_throw(db=db, db_class=db_class, query=stmt)
 
-        if response_type == ResponseType.Normalized:
-
-            return build_normalized_store_object(
-                normalized_response_type=normalized_response_type, 
-                items=[item],
-                response_model=response_model,
-                normalizer=normalizer
+        if response_type == ResponseType.Normalized and exclude_fields:
+            raise HTTPException(
+                400, "Cannot use exclude_fields with Normalized response_type"
             )
 
-        return item
+        item = await routes_service.get_by_id(
+            id=id,
+            db_class=db_class,
+            response_model=response_model,
+            db=db,
+            query=query,
+            exclude_fields=exclude_fields,
+        )
+
+        if response_type == ResponseType.Normalized:
+            return build_normalized_store_object(
+                normalized_response_type=normalized_response_type,
+                items=[item],
+                response_model=response_model,
+                normalizer=normalizer,
+            )
+
+        if response_type == ResponseType.Nested:
+            validated_item = response_model.model_validate(todict(item))
+            return validated_item
+
+        raise HTTPException(400, f"Unknown response_type: {response_type}")
 
     normalized_response_type = build_normalized_store_type(response_model)
     response_model_union = normalized_response_type | response_model
@@ -159,7 +209,7 @@ def create_post_route(
     input_model: type[BaseModel],
     response_model: type[BaseModel],
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    prefix: str, 
+    prefix: str,
     normalizer: ObjectNormalizer | None = None,
     preprocessor_input: (
         Callable[[BaseModel, AsyncSession], Awaitable[BaseModel]] | None
@@ -168,7 +218,7 @@ def create_post_route(
     tags = routes_service.tags_from_prefix(prefix)
 
     async def endpoint(
-        payload: input_model,   # type:ignore
+        payload: input_model,  # type:ignore
         response_type: Annotated[
             ResponseType,
             Query(
@@ -191,14 +241,16 @@ def create_post_route(
             *select_relationships_deep(db_class, response_model),
         )
         stmt = stmt.where(db_class.id == id)
-        item = await routes_service.scalar_or_throw(db=db, db_class=db_class, query=stmt)
+        item = await routes_service.scalar_or_throw(
+            db=db, db_class=db_class, query=stmt
+        )
 
         if response_type == ResponseType.Normalized:
             return build_normalized_store_object(
-                normalized_response_type=normalized_response_type, 
+                normalized_response_type=normalized_response_type,
                 items=[item],
                 response_model=response_model,
-                normalizer=normalizer
+                normalizer=normalizer,
             )
 
         return item
@@ -273,7 +325,9 @@ def create_batch_patch_route_varied(
         updated_instances = []
 
         for item in payload.items:
-            instance = await routes_service.scalar_or_throw_by_id(db=db, db_class=db_class, id=item.id)
+            instance = await routes_service.scalar_or_throw_by_id(
+                db=db, db_class=db_class, id=item.id
+            )
             for key, value in item.data.model_dump(exclude_unset=True).items():  # type: ignore
                 setattr(instance, key, value)
 
