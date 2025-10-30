@@ -33,7 +33,6 @@ def sa_to_dict(obj, visited=None):
     obj_id = id(obj)
     if obj_id in visited:
         return visited[obj_id]
-    visited[obj_id] = obj
 
     # ORM-mapped class instance
     if isinstance(obj, DeclarativeBase):
@@ -54,6 +53,7 @@ def sa_to_dict(obj, visited=None):
         return [sa_to_dict(item, visited) for item in obj]
 
     # Return plain value (non-SQLAlchemy type)
+    visited[obj_id] = obj
     return obj
 
 
