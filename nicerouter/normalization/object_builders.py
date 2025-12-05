@@ -14,9 +14,8 @@ def normalize_rows[E](
     if not isinstance(rows, Iterable):
         rows = [rows]
  
-    for row in rows:
-        obj = response_model.model_validate(row)
-        normalizer.normalize(obj=obj, obj_model=response_model, id_name="id")
+    for row in rows: 
+        normalizer.normalize(obj=row, obj_model=response_model, id_name="id")
     return normalizer.store
 
 
