@@ -16,7 +16,7 @@ def normalize_rows[E](
  
     for row in rows:
         obj = response_model.model_validate(row)
-        normalizer.normalize(obj=obj, id_name="id")
+        normalizer.normalize(obj=obj, obj_model=response_model, id_name="id")
     return normalizer.store
 
 
