@@ -1,19 +1,14 @@
-from typing import Any, Literal
+from typing import Any
 
 import sqlalchemy as sa
 from fastapi import HTTPException
-from pydantic import BaseModel, create_model, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import DeclarativeBase, load_only
-from nicerouter.routing.sa_select_in_deep import select_relationships_deep
-from pprint import pprint
-
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.collections import InstrumentedList
-from sqlalchemy.orm import DeclarativeBase
 
-
-from sqlalchemy.orm.attributes import instance_state
+from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 
 
 def sa_to_dict(obj, visited=None):
@@ -153,7 +148,7 @@ async def get_all[E](
     exclude_fields: str | None = None,
 ):
     options = []
-    exclude_fields_set = set()
+    exclude_fields_set: set[str] = set()
 
     # exclude fields from select
     if exclude_fields:
@@ -201,7 +196,6 @@ async def get_by_id[E](
     id_field: str = "id",
     exclude_fields: str | None = None,
 ):
-
     options = []
     exclude_fields_set = set()
 

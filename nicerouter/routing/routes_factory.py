@@ -1,6 +1,4 @@
-from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
-from enum import Enum
-from functools import cache, partial
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Annotated, Any
 
 import sqlalchemy as sa
@@ -8,13 +6,14 @@ from fastapi import Depends, HTTPException, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from nicerouter.normalization.normalizer import ObjectNormalizer
-from nicerouter.routing import routes_service
-from nicerouter.routing.sa_select_in_deep import select_relationships_deep
-from nicerouter.routing.models import ResponseType
 from nicerouter.normalization.object_builders import build_normalized_store_object
 from nicerouter.normalization.type_builder import build_normalized_store_type
-from nicerouter.routing.routes_service import tags_from_prefix, sa_to_dict
+from nicerouter.routing import routes_service
+from nicerouter.routing.models import ResponseType
+from nicerouter.routing.routes_service import sa_to_dict, tags_from_prefix
+from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 
 
 def create_get_all_route(
@@ -60,11 +59,10 @@ def create_get_all_route(
             ),
         ] = None,
     ):
-
-        if response_type == ResponseType.Normalized and exclude_fields:
-            raise HTTPException(
-                400, "Cannot use exclude_fields with Normalized response_type"
-            )
+        # if response_type == ResponseType.Normalized and exclude_fields:
+        #     raise HTTPException(
+        #         400, "Cannot use exclude_fields with Normalized response_type"
+        #     )
 
         rows = await routes_service.get_all(
             db_class=db_class,
@@ -79,6 +77,10 @@ def create_get_all_route(
         )
 
         if response_type == ResponseType.Normalized:
+            # Remove link to db session after fetched
+            # to avoid trigger lazy loads raise runtime error
+            db.expunge_all()
+
             store = build_normalized_store_object(
                 normalized_response_type=normalized_response_type,
                 items=rows,  # type:ignore
@@ -91,7 +93,9 @@ def create_get_all_route(
             # only pass an dictionary,
             # otherwise pydantic will lazy load fields not loaded and crash async context
             validated_rows = [
-                response_model.model_validate(sa_to_dict(r)) for r in rows
+                # response_model.model_validate(sa_to_dict(r)) for r in rows
+                sa_to_dict(r)
+                for r in rows
             ]
             return validated_rows
 
@@ -139,7 +143,6 @@ def create_get_by_id_route(
         ] = None,
         db: AsyncSession = Depends(get_db_session),
     ):
-
         if response_type == ResponseType.Normalized and exclude_fields:
             raise HTTPException(
                 400, "Cannot use exclude_fields with Normalized response_type"
@@ -255,7 +258,9 @@ def create_patch_route(
         Callable[[BaseModel, AsyncSession], Awaitable[BaseModel]] | None
     ) = None,
 ) -> APIRoute:
-    async def endpoint(id: int, payload: input_model, db: AsyncSession = Depends(get_db_session)):  # type: ignore  # noqa: A002
+    async def endpoint(
+        id: int, payload: input_model, db: AsyncSession = Depends(get_db_session)
+    ):  # type: ignore  # noqa: A002
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
 

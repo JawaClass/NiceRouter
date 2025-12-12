@@ -18,7 +18,7 @@ def is_reference_type(typ: type) -> bool:
     if issubclass(inner_type, BaseModel):
         if container_type is None:
             return True
-        if container_type is Union:
+        if container_type is Union:  
             return True
         if not issubclass(container_type, Sequence):
             return True
