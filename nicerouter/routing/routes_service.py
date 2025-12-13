@@ -11,27 +11,35 @@ from sqlalchemy.orm.collections import InstrumentedList
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 
 
-def sa_to_dict(obj, visited=None):
+def sa_to_dict(obj, *, depth=None, path: dict | None = None):
     """
     Safely convert a SQLAlchemy DeclarativeBase object (or list of them)
     into plain Python dictionaries — avoiding circular references and
     unloaded relationships.
     """
+    type_ = type(obj)
+
+    # print(f"sa_to_dict: {depth=} {type(obj)}")
 
     if isinstance(obj, (type(None), int, float, str, bool)):
         return obj
 
-    if visited is None:
-        visited = dict()
+    if depth is None:
+        depth = 0
 
-    # Avoid recursion loops on circular references
-    obj_id = id(obj)
-    if obj_id in visited:
-        return visited[obj_id]
+    if path is None:
+        path = dict()  # dict is an ordered set
+
+    if type_ in path:
+        path = [k.__name__ for k in path.keys()]
+        msg = f"Circular Recursion detected @ {depth=} :: {type_=} in {path=}"
+        raise ValueError(msg)
 
     # ORM-mapped class instance
     if isinstance(obj, DeclarativeBase):
         result = {}
+
+        path[type_] = None
 
         for key, col_prop in obj.__mapper__.column_attrs.items():
             result[key] = getattr(obj, key)
@@ -39,16 +47,18 @@ def sa_to_dict(obj, visited=None):
         for key, rel_prop in obj.__mapper__.relationships.items():
             # only serialize if the relationship is loaded
             if key in obj.__dict__:
-                result[key] = sa_to_dict(getattr(obj, key), visited)
+                result[key] = sa_to_dict(getattr(obj, key), depth=depth + 1, path=path)
+
+        path.pop(type_)
 
         return result
 
     # Handle list-like relationships
     if isinstance(obj, InstrumentedList):
-        return [sa_to_dict(item, visited) for item in obj]
+        return [sa_to_dict(item, depth=depth + 1, path=path) for item in obj]
 
-    # Return plain value (non-SQLAlchemy type)
-    visited[obj_id] = obj
+    # # Return plain value (non-SQLAlchemy type)
+    # visited[obj_id] = obj
     return obj
 
 

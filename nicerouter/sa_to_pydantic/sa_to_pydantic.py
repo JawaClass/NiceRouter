@@ -1,22 +1,22 @@
 from collections import defaultdict
-from pydantic import BaseModel, Field, create_model
-import sqlalchemy as sa
-from sqlalchemy.orm import DeclarativeBase, Mapped, relationship, mapped_column
 from pprint import pprint
+from types import UnionType
 from typing import (
     Any,
+    Callable,
     ForwardRef,
     Literal,
-    get_type_hints,
-    get_origin,
+    Union,
     get_args,
-    Callable,
+    get_origin,
+    get_type_hints,
 )
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from types import UnionType
+
+import sqlalchemy as sa
+from pydantic import BaseModel, Field, create_model
+from sqlalchemy.orm import DeclarativeBase
+
 from nicerouter.type_utils import extract_most_inner_type
-from typing import ForwardRef
-from typing import Union
 
 CircularDepencyStrategy = Literal["raise", "forwardref", "discard"]
 
@@ -124,9 +124,9 @@ def sa_to_pydantic(
         print(f"{model=} {model_name=}")
         print("-")
         pprint(REGISTRY)
-    assert (
-        created_entry is not None
-    ), f"Pydantic model not found in Registry for {model}"
+    assert created_entry is not None, (
+        f"Pydantic model not found in Registry for {model}"
+    )
     pydantic_model = created_entry.model
 
     # print("sa_to_pydantic :: created model ", model_name)
@@ -175,20 +175,21 @@ def _sa_to_pydantic(
 
     _stack = _stack or set()
 
-    if namespace in REGISTRY and model_name in REGISTRY[namespace]:
-        cache = REGISTRY[namespace][model_name]
-        # assert parent_model is cache.parent_sa_model
-        # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
-        return cache.model
-
+    # handle recursion in model graph
     if model_name in _stack:
         if circular_depency_strategy == "raise":
             raise ValueError(f"Circular Depency detected: {model_name}")
         if circular_depency_strategy == "forwardref":
             return ForwardRef(model_name)
         if circular_depency_strategy == "discard":
-            # print("DISCARD", model_name, "::", _stack, "::", REGISTRY)
+            # print("DISCARD", model_name, "::", _stack)
             return None
+
+    if namespace in REGISTRY and model_name in REGISTRY[namespace]:
+        cache = REGISTRY[namespace][model_name]
+        # assert parent_model is cache.parent_sa_model
+        # print("_sa_to_pydantic :: REUSE", model_name, "parent:", parent_model, "=>", cache.model)
+        return cache.model
 
     _stack.add(model_name)
 
@@ -199,7 +200,6 @@ def _sa_to_pydantic(
     fields: dict[str, Any] = {}
 
     for name, annotation in name2annotation.items():
-
         if exclude_fields and name in exclude_fields:
             continue
 
