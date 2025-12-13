@@ -59,13 +59,17 @@ def build_router_config(
     )
 
 
+class NiceAPIRouter(APIRouter):
+    nice_config: CreateRouterConfig
+
+
 def create_router_for_db(
     *,
     prefix: str,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession, None]],
     db_class: type[Any],
     normalizer: ObjectNormalizer | None = None,
-) -> APIRouter:
+) -> NiceAPIRouter:
     router_config = build_router_config(db_class=db_class, normalizer=normalizer)
 
     return create_router(
@@ -78,8 +82,9 @@ def create_router(
     prefix: str,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession, None]],
     config: CreateRouterConfig,
-) -> APIRouter:
-    router = APIRouter(prefix=prefix)
+) -> NiceAPIRouter:
+    router = NiceAPIRouter(prefix=prefix)
+    router.nice_config = config
 
     db_class = config.db_class
 

@@ -4,7 +4,8 @@ import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
-
+from nicerouter.sa_to_pydantic.sa_to_pydantic import REGISTRY
+from pprint import pprint
 
 class Base(DeclarativeBase):
     pass
@@ -39,24 +40,35 @@ class C(Base):
 
 
 def test_recursion():
+    REGISTRY.clear()
     A_Out = sa_to_pydantic(
         model=A,
         name_generator=lambda name: f"{name}__Out",
+        circular_depency_strategy="discard",
     )
-    from pprint import pprint
-
-    print(A_Out)
-
-    pprint(A_Out.model_fields)
-    print("\nFields of b:")
-    pprint(A_Out.model_fields["b"].annotation.model_fields)
 
     c_mode_fields = (
         A_Out.model_fields["b"].annotation.model_fields["c"].annotation.model_fields
     )
-    print("\nFields of c:")
-    pprint(c_mode_fields)
     assert "a" not in c_mode_fields
 
 
-test_recursion()
+def test_recursion2():
+    REGISTRY.clear()
+    A_Out = sa_to_pydantic(
+        model=A,
+        name_generator=lambda name: f"{name}__Out",
+        circular_depency_strategy="forwardref",
+    )
+
+    c_mode_fields = (
+        A_Out.model_fields["b"].annotation.model_fields["c"].annotation.model_fields
+    )
+ 
+    pprint(c_mode_fields)
+    assert "a" in c_mode_fields
+
+
+# test_recursion()
+# test_recursion2()
+# test_sa_to_pydantic_recursion
