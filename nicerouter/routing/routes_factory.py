@@ -12,6 +12,7 @@ from nicerouter.normalization.object_builders import build_normalized_store_obje
 from nicerouter.normalization.type_builder import build_normalized_store_type
 from nicerouter.routing import routes_service
 from nicerouter.routing.models import ResponseType
+from nicerouter.routing.param_builders import get_db_class_fields
 from nicerouter.routing.routes_service import sa_to_dict, tags_from_prefix
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 
@@ -26,7 +27,7 @@ def create_get_all_route(
     prefix: str,
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
-    fields_lookup = routes_service.get_db_class_fields(db_class=db_class)
+    fields_lookup = get_db_class_fields(db_class=db_class)
     available_fields = ",".join([f for f in fields_lookup])
 
     async def endpoint(
@@ -131,7 +132,7 @@ def create_get_by_id_route(
     normalizer: ObjectNormalizer | None = None,
 ) -> APIRoute:
     tags = routes_service.tags_from_prefix(prefix)
-    fields_lookup = routes_service.get_db_class_fields(db_class=db_class)
+    fields_lookup = get_db_class_fields(db_class=db_class)
     available_fields = ",".join([f for f in fields_lookup])
 
     async def endpoint(
