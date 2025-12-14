@@ -84,6 +84,6 @@ def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
         field_definitions[field_name] = (new_field_info.annotation, new_field_info)
 
     name = f"{model.__name__}_Optional"
-    new_model: type[BaseModel] = create_model(name, **field_definitions)
+    new_model: type[BaseModel] = create_model(name, **field_definitions, __module__="")
 
     return new_model

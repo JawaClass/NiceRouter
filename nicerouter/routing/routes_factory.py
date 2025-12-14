@@ -225,8 +225,16 @@ def create_post_route(
 
         instance = db_class(**payload.model_dump())  # type: ignore
         db.add(instance)
-        await db.commit()
-        await db.refresh(instance)
+        from sqlalchemy.exc import IntegrityError
+
+        try:
+            await db.commit()
+            await db.refresh(instance)
+        except IntegrityError as e:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Database integrity constraint violated: {e.orig}",
+            )
 
         id = instance.id  # noqa: A001
         stmt = sa.select(db_class).options(
