@@ -168,6 +168,7 @@ async def get_all[E](
     sort_by: str | None = None,
     filter_by: str | None = None,
     exclude_fields: str | None = None,
+    max_depth: int | None = None,
 ):
     options = []
     exclude_fields_set: set[str] = set()
@@ -182,7 +183,10 @@ async def get_all[E](
     stmt = query or sa.select(db_class).options(
         *options,
         *select_relationships_deep(
-            db_class, response_model, exclude_field_names=exclude_fields_set
+            db_class,
+            response_model,
+            exclude_field_names=exclude_fields_set,
+            max_depth=max_depth,
         ),
     )
 
@@ -217,6 +221,7 @@ async def get_by_id[E](
     query: sa.Select | None,
     id_field: str = "id",
     exclude_fields: str | None = None,
+    max_depth: int | None = None,
 ):
     options = []
     exclude_fields_set: set[str] = set()
@@ -231,7 +236,10 @@ async def get_by_id[E](
     stmt = query or sa.select(db_class).options(
         *options,
         *select_relationships_deep(
-            db_class, response_model, exclude_field_names=exclude_fields_set
+            db_class,
+            response_model,
+            exclude_field_names=exclude_fields_set,
+            max_depth=max_depth,
         ),
     )
     stmt = stmt.where(getattr(db_class, id_field) == id)

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from sqlalchemy.orm import Load, selectinload
 
+from nicerouter.routing.routes_service import build_select_fields
 from nicerouter.type_utils import extract_most_inner_type
 
 
@@ -13,7 +14,7 @@ def select_relationships_deep(
     db_class: type[Any],
     mask_class: type[BaseModel],
     sa_load_method: Callable[[Any], Load] = selectinload,  # type:ignore
-    max_depth: int = 5,
+    max_depth: int | None = 5,
     depth: int = 0,
     exclude_field_names: Iterable[str] | None = None,
 ) -> list[Load]:
@@ -21,7 +22,7 @@ def select_relationships_deep(
     filtered by a Pydantic response model.
     """
 
-    if depth >= max_depth:
+    if max_depth is not None and depth >= max_depth:
         return []
 
     # Inspect relationships of the SQLAlchemy class
@@ -33,8 +34,6 @@ def select_relationships_deep(
 
     loads: list[Load] = []
     exclude_fields_set = set(exclude_field_names or [])
-
-    from nicerouter.routing.routes_service import build_select_fields
 
     for field_name, field_info in mask_struct.items():
         if field_name not in relationships:

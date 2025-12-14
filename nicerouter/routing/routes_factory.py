@@ -58,6 +58,12 @@ def create_get_all_route(
                 description=f"Columns to exclude from response. Fields sperated by ;  Example: {available_fields}",
             ),
         ] = None,
+        max_depth: Annotated[
+            int | None,
+            Query(
+                description="Specify the maximum depth relationships shall be loaded. Defaults to 3.",
+            ),
+        ] = 3,
     ):
         # if response_type == ResponseType.Normalized and exclude_fields:
         #     raise HTTPException(
@@ -74,6 +80,7 @@ def create_get_all_route(
             sort_by=sort_by,
             filter_by=filter_by,
             exclude_fields=exclude_fields,
+            max_depth=max_depth,
         )
 
         if response_type == ResponseType.Normalized:
@@ -141,13 +148,14 @@ def create_get_by_id_route(
                 description=f"Columns to exclude from response. Fields sperated by ;  Example: {available_fields}",
             ),
         ] = None,
+        max_depth: Annotated[
+            int | None,
+            Query(
+                description="Specify the maximum depth relationships shall be loaded. Defaults to 3.",
+            ),
+        ] = 3,
         db: AsyncSession = Depends(get_db_session),
     ):
-        if response_type == ResponseType.Normalized and exclude_fields:
-            raise HTTPException(
-                400, "Cannot use exclude_fields with Normalized response_type"
-            )
-
         item = await routes_service.get_by_id(
             id=id,
             db_class=db_class,
@@ -155,7 +163,10 @@ def create_get_by_id_route(
             db=db,
             query=query,
             exclude_fields=exclude_fields,
+            max_depth=max_depth
         )
+
+        db.expunge_all()
 
         if response_type == ResponseType.Normalized:
             return build_normalized_store_object(
