@@ -1,11 +1,10 @@
 from collections.abc import Callable
-
-from typing import Any, ForwardRef, Iterable, Sequence, get_args
+from typing import Any, Iterable
 
 import sqlalchemy as sa
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from sqlalchemy.orm import Load, selectinload, InstrumentedAttribute
+from sqlalchemy.orm import Load, selectinload
 
 from nicerouter.type_utils import extract_most_inner_type
 
@@ -14,7 +13,7 @@ def select_relationships_deep(
     db_class: type[Any],
     mask_class: type[BaseModel],
     sa_load_method: Callable[[Any], Load] = selectinload,  # type:ignore
-    max_depth: int = 10,
+    max_depth: int = 5,
     depth: int = 0,
     exclude_field_names: Iterable[str] | None = None,
 ) -> list[Load]:
@@ -38,11 +37,15 @@ def select_relationships_deep(
     from nicerouter.routing.routes_service import build_select_fields
 
     for field_name, field_info in mask_struct.items():
-
         if field_name not in relationships:
             continue
 
         if field_name in exclude_fields_set:
+            continue
+
+        # Resolve the Pydantic model type for the related field
+        annotation = field_info.annotation
+        if annotation is None:
             continue
 
         exclude_fields_set_next_level = {
@@ -54,22 +57,18 @@ def select_relationships_deep(
         rel = relationships[field_name]
         rel_class = rel.mapper.class_
 
-        load_only_fields = build_select_fields(rel_class, exclude_fields_set_next_level)
+        load_only_fields = build_select_fields(
+            rel_class, exclude_fields_set=exclude_fields_set_next_level
+        )
 
         query = sa_load_method(getattr(db_class, field_name)).load_only(
             *load_only_fields
         )
 
-        # Resolve the Pydantic model type for the related field
-        annotation = field_info.annotation
-        if annotation is None:
-            continue
-
         child_model = extract_most_inner_type(annotation)
 
         # Recurse
         if isinstance(child_model, type) and issubclass(child_model, BaseModel):
-
             child_loads = select_relationships_deep(
                 rel_class,
                 child_model,

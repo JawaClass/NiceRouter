@@ -34,10 +34,13 @@ def sa_to_dict(
     if path is None:
         path = dict()  # dict is an ordered set
 
-    if on_recursion == "raise" and type_ in path:
-        path = [k.__name__ for k in path.keys()]
-        msg = f"Circular Recursion detected @ {depth=} :: {type_=} in {path=}"
-        raise ValueError(msg)
+    if type_ in path:
+        if on_recursion == "raise":
+            path = [k.__name__ for k in path.keys()]
+            msg = f"Circular Recursion detected @ {depth=} :: {type_=} in {path=}"
+            raise ValueError(msg)
+        else:
+            return None
 
     # ORM-mapped class instance
     if isinstance(obj, DeclarativeBase):
@@ -216,7 +219,7 @@ async def get_by_id[E](
     exclude_fields: str | None = None,
 ):
     options = []
-    exclude_fields_set = set()
+    exclude_fields_set: set[str] = set()
 
     # exclude fields from select
     if exclude_fields:
