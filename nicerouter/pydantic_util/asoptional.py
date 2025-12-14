@@ -65,7 +65,7 @@ def new_field_info_as_optional(field_original: FieldInfo):
         # list get default: []
         # others get default: None
         if get_origin(field.annotation) is list:
-            new_annotation = list[new_annotation]
+            field.annotation = list[new_annotation]
             field.default = []
         else:
             field.annotation = new_annotation | None
