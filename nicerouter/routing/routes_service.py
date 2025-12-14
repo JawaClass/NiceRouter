@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import sqlalchemy as sa
 from fastapi import HTTPException
@@ -10,8 +10,12 @@ from sqlalchemy.orm.collections import InstrumentedList
 
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
 
+OnRecursion = Literal["raise", "ignore"]
 
-def sa_to_dict(obj, *, depth=None, path: dict | None = None):
+
+def sa_to_dict(
+    obj, *, depth=None, path: dict | None = None, on_recursion: OnRecursion = "ignore"
+):
     """
     Safely convert a SQLAlchemy DeclarativeBase object (or list of them)
     into plain Python dictionaries — avoiding circular references and
@@ -30,7 +34,7 @@ def sa_to_dict(obj, *, depth=None, path: dict | None = None):
     if path is None:
         path = dict()  # dict is an ordered set
 
-    if type_ in path:
+    if on_recursion == "raise" and type_ in path:
         path = [k.__name__ for k in path.keys()]
         msg = f"Circular Recursion detected @ {depth=} :: {type_=} in {path=}"
         raise ValueError(msg)
@@ -47,7 +51,12 @@ def sa_to_dict(obj, *, depth=None, path: dict | None = None):
         for key, rel_prop in obj.__mapper__.relationships.items():
             # only serialize if the relationship is loaded
             if key in obj.__dict__:
-                result[key] = sa_to_dict(getattr(obj, key), depth=depth + 1, path=path)
+                result[key] = sa_to_dict(
+                    getattr(obj, key),
+                    depth=depth + 1,
+                    path=path,
+                    on_recursion=on_recursion,
+                )
 
         path.pop(type_)
 
