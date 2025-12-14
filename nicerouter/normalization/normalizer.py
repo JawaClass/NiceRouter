@@ -3,7 +3,6 @@ from functools import cache
 from typing import Any, Callable
 
 from pydantic import BaseModel
-from sqlalchemy.orm.exc import DetachedInstanceError
 
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 from nicerouter.type_utils import extract_most_inner_type
@@ -78,7 +77,7 @@ class ObjectNormalizer:
     def normalize(
         self,
         *,
-        obj: Any,
+        obj: object,
         obj_model: type[BaseModel],
         id_name: str = "id",
         ref2idfield_resolver: IdResolver | None = None,
@@ -104,14 +103,16 @@ class ObjectNormalizer:
 
         # normalize ref children
         for field_name in reference_fields:
-            ref_field_obj = getattr(obj, field_name)
-
-            try:
-                ref_field_obj = getattr(obj, field_name)
-            except DetachedInstanceError:
-                print("ADD DETACHED", field_name)
-                field_names_with_detached_error.add(field_name)
+            # dont raise lazy load error on not loaded fields
+            if field_name not in obj.__dict__:
                 continue
+
+            # try:
+            ref_field_obj = getattr(obj, field_name)
+            # except DetachedInstanceError:
+            #     print("ADD DETACHED", field_name)
+            #     field_names_with_detached_error.add(field_name)
+            #     continue
 
             if ref_field_obj is None:
                 normalized_obj[field_name] = None
@@ -141,18 +142,22 @@ class ObjectNormalizer:
 
         # normalize ref children inside list
         for field_name in list_fields:
+            # dont raise lazy load error on not loaded fields
+            if field_name not in obj.__dict__:
+                continue
+
             ref_field_obj_model = self._extract_most_inner_type(obj_model, field_name)
 
-            try:
-                normalized_obj[field_name] = [
-                    self.normalize(obj=o, obj_model=ref_field_obj_model)[id_name]
-                    for o in getattr(obj, field_name)
-                ]
-            except DetachedInstanceError:
-                # print("ADD DETACHED", field_name)
-                field_names_with_detached_error.add(field_name)
-                normalized_obj[field_name] = []
-                continue
+            # try:
+            normalized_obj[field_name] = [
+                self.normalize(obj=o, obj_model=ref_field_obj_model)[id_name]
+                for o in getattr(obj, field_name)
+            ]
+            # except DetachedInstanceError:
+            #     # print("ADD DETACHED", field_name)
+            #     field_names_with_detached_error.add(field_name)
+            #     normalized_obj[field_name] = []
+            #     continue
 
         # store normalized object in slice
         store_slice[id] = normalized_obj
