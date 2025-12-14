@@ -105,6 +105,7 @@ class ObjectNormalizer:
         for field_name in reference_fields:
             # dont raise lazy load error on not loaded fields
             if field_name not in obj.__dict__:
+                normalized_obj[field_name] = None
                 continue
 
             # try:
@@ -144,6 +145,7 @@ class ObjectNormalizer:
         for field_name in list_fields:
             # dont raise lazy load error on not loaded fields
             if field_name not in obj.__dict__:
+                normalized_obj[field_name] = []
                 continue
 
             ref_field_obj_model = self._extract_most_inner_type(obj_model, field_name)
