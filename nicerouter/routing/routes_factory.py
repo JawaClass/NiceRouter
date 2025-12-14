@@ -163,7 +163,7 @@ def create_get_by_id_route(
             db=db,
             query=query,
             exclude_fields=exclude_fields,
-            max_depth=max_depth
+            max_depth=max_depth,
         )
 
         db.expunge_all()
