@@ -41,11 +41,8 @@ def build_router_config(
     # GoModelSchemaUpdate = generate_model_schema_update(db_class)
     GoModelSchemaUpdate = GoModelSchemaIn
 
-    if out_schema_optional_fields:
-        x = GoModelSchemaOut
-        GoModelSchemaOut = make_pydantic_model_optional(x)
-        GoModelSchemaOut = make_pydantic_model_optional(x)
-        GoModelSchemaOut = make_pydantic_model_optional(x)
+    if out_schema_optional_fields: 
+        GoModelSchemaOut = make_pydantic_model_optional(GoModelSchemaOut)
 
     return CreateRouterConfig(
         db_class=db_class,
