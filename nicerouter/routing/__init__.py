@@ -2,7 +2,7 @@ from typing import Any, AsyncGenerator, Callable
 
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import DeclarativeBase
 from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.pydantic_util.asoptional import make_pydantic_model_optional
 from nicerouter.routing.config_models import (
@@ -29,17 +29,23 @@ from nicerouter.routing.routes_factory import (
 
 
 def build_router_config(
-    db_class: type[Any],
+    db_class: type[DeclarativeBase],
     normalizer: ObjectNormalizer | None = None,
     out_schema_optional_fields: bool = True,
 ):
+    if not issubclass(db_class, DeclarativeBase):
+        raise ValueError(f"{db_class=} needs to inherit from sqlalchemy DeclarativeBase.")
+
     GoModelSchemaIn = generate_model_schema_in(db_class)
     GoModelSchemaOut = generate_model_schema_out(db_class)
     # GoModelSchemaUpdate = generate_model_schema_update(db_class)
     GoModelSchemaUpdate = GoModelSchemaIn
 
     if out_schema_optional_fields:
-        GoModelSchemaOut = make_pydantic_model_optional(GoModelSchemaOut)
+        x = GoModelSchemaOut
+        GoModelSchemaOut = make_pydantic_model_optional(x)
+        GoModelSchemaOut = make_pydantic_model_optional(x)
+        GoModelSchemaOut = make_pydantic_model_optional(x)
 
     return CreateRouterConfig(
         db_class=db_class,

@@ -19,6 +19,15 @@ class UrgencyLevel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     level: Mapped[str] = mapped_column(sa.Text)
 
+
+class Panda(Base):
+    __tablename__ = "pandas"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(sa.Text)
+    age: Mapped[str] = mapped_column(sa.Integer)
+
+
+
 class ToDoItem(Base):
     __tablename__ = "todo_item"
     id: Mapped[int] = mapped_column(primary_key=True)

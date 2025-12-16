@@ -68,22 +68,24 @@ def new_field_info_as_optional(field_original: FieldInfo):
             field.annotation = list[new_annotation]
             field.default = []
         else:
-            field.annotation = new_annotation | None
+            field.annotation = new_annotation | None # type: ignore
             field.default = None
 
         return field
 
     return field
 
+from functools import cache
 
+@cache
 def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
-    field_definitions: dict[str, tuple[type[Any] | None, FieldInfo]] = {}
+    field_definitions: dict[str, tuple[Any, FieldInfo]] = {}
 
     for field_name, field_info in model.model_fields.items():
         new_field_info = new_field_info_as_optional(field_info)
         field_definitions[field_name] = (new_field_info.annotation, new_field_info)
 
     name = f"{model.__name__}_Optional"
-    new_model: type[BaseModel] = create_model(name, **field_definitions, __module__="")
+    new_model: type[BaseModel] = create_model(name, __module__="", **field_definitions) # type:ignore
 
     return new_model
