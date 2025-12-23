@@ -1,5 +1,4 @@
 from typing import Any, AsyncGenerator, Callable
-
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase

@@ -66,11 +66,7 @@ def create_get_all_route(
             ),
         ] = 3,
     ):
-        # if response_type == ResponseType.Normalized and exclude_fields:
-        #     raise HTTPException(
-        #         400, "Cannot use exclude_fields with Normalized response_type"
-        #     )
-
+      
         rows = await routes_service.get_all(
             db_class=db_class,
             response_model=response_model,
@@ -223,18 +219,11 @@ def create_post_route(
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
 
-        instance = db_class(**payload.model_dump())  # type: ignore
-        db.add(instance)
-        from sqlalchemy.exc import IntegrityError
+        async with routes_service.commit_db_ops(db=db):
+            instance = db_class(**payload.model_dump())  # type: ignore
+            db.add(instance)
 
-        try:
-            await db.commit()
-            await db.refresh(instance)
-        except IntegrityError as e:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Database integrity constraint violated: {e.orig}",
-            )
+        await db.refresh(instance)
 
         id = instance.id  # noqa: A001
         stmt = sa.select(db_class).options(
@@ -279,22 +268,23 @@ def create_patch_route(
     ) = None,
 ) -> APIRoute:
     async def endpoint(
-        id: int, payload: input_model, db: AsyncSession = Depends(get_db_session)
+        id: int, payload: input_model, db: AsyncSession = Depends(get_db_session) # type: ignore
     ):  # type: ignore  # noqa: A002
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
 
-        instance = await routes_service.scalar_or_throw(
-            db=db,
-            db_class=db_class,
-            query=sa.select(db_class).where(db_class.id == id),
-        )
+        async with routes_service.commit_db_ops(db=db):
+            instance = await routes_service.scalar_or_throw(
+                db=db,
+                db_class=db_class,
+                query=sa.select(db_class).where(db_class.id == id),
+            )
 
-        for key, value in payload.model_dump(exclude_unset=True).items():  # type: ignore
-            setattr(instance, key, value)
-
-        await db.commit()
+            for key, value in payload.model_dump(exclude_unset=True).items():  # type: ignore
+                setattr(instance, key, value)
+ 
         await db.refresh(instance)
+
         return instance
 
     return APIRoute(
@@ -326,16 +316,16 @@ def create_batch_patch_route_varied(
     ):
         updated_instances = []
 
-        for item in payload.items:
-            instance = await routes_service.scalar_or_throw_by_id(
-                db=db, db_class=db_class, id=item.id
-            )
-            for key, value in item.data.model_dump(exclude_unset=True).items():  # type: ignore
-                setattr(instance, key, value)
+        async with routes_service.commit_db_ops(db=db):
+            for item in payload.items:
+                instance = await routes_service.scalar_or_throw_by_id(
+                    db=db, db_class=db_class, id=item.id
+                )
+                for key, value in item.data.model_dump(exclude_unset=True).items():  # type: ignore
+                    setattr(instance, key, value)
 
-            updated_instances.append(instance)
+                updated_instances.append(instance)
 
-        await db.commit()
         for instance in updated_instances:
             await db.refresh(instance)
 
@@ -365,10 +355,12 @@ def create_delete_route(
             db_class=db_class,
             query=sa.select(db_class).where(db_class.id == id),
         )
-
-        await db.delete(instance)
-        await db.commit()
-        return {"detail": "Deleted"}
+        async with routes_service.commit_db_ops(db=db):
+            await db.delete(instance)
+              
+        return {"detail": {
+            "Deleted": id
+        }}
 
     return APIRoute(
         path=f"{prefix}/{{id}}",
@@ -394,10 +386,11 @@ def create_delete_multi_route(
             missing_ids = set(id_list) - {x.id for x in found}
             raise HTTPException(status_code=404, detail=f"Missing IDs: {missing_ids}")
 
-        for item in found:
-            await db.delete(item)
+        async with routes_service.commit_db_ops(db=db): 
+            for item in found:
+                await db.delete(item)
 
-        await db.commit()
+        # await db.commit()
         return {"detail": f"Deleted {len(found)} items"}
 
     return APIRoute(

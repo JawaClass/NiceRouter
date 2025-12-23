@@ -40,6 +40,7 @@ class C(Base):
 
 
 def test_recursion():
+    print("test_recursion...")
     REGISTRY.clear()
     A_Out = sa_to_pydantic(
         model=A,
@@ -51,6 +52,7 @@ def test_recursion():
         A_Out.model_fields["b"].annotation.model_fields["c"].annotation.model_fields
     )
     assert "a" not in c_mode_fields
+    # print(c_mode_fields)
 
 
 def test_recursion2():
@@ -69,6 +71,6 @@ def test_recursion2():
     assert "a" in c_mode_fields
 
 
-# test_recursion()
-# test_recursion2()
+test_recursion()
+test_recursion2()
 # test_sa_to_pydantic_recursion
