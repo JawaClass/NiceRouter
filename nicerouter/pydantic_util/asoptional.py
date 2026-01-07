@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cache
 from typing import Any, get_origin
 
 from pydantic import BaseModel, create_model
@@ -68,14 +69,13 @@ def new_field_info_as_optional(field_original: FieldInfo):
             field.annotation = list[new_annotation]
             field.default = []
         else:
-            field.annotation = new_annotation | None # type: ignore
+            field.annotation = new_annotation | None  # type: ignore
             field.default = None
 
         return field
 
     return field
 
-from functools import cache
 
 @cache
 def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
@@ -86,6 +86,8 @@ def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
         field_definitions[field_name] = (new_field_info.annotation, new_field_info)
 
     name = f"{model.__name__}"
-    new_model: type[BaseModel] = create_model(name, __module__="", **field_definitions) # type:ignore
+    new_model: type[BaseModel] = create_model(
+        name, __module__="", **field_definitions, __config__=model.model_config.copy()
+    )  # type:ignore
 
     return new_model
