@@ -1,15 +1,15 @@
-from typing import Any, Sequence
-from pydantic import BaseModel, create_model, Field
-from pydantic_core import PydanticUndefinedType
-from nicerouter.normalization.type_util import is_reference_type, is_list_reference_type
-from pprint import pprint
-from nicerouter.type_utils import extract_most_inner_type
 from functools import cache
+from pprint import pprint
+from typing import Any
+
+from pydantic import BaseModel, Field, create_model
+
+from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
+from nicerouter.type_utils import extract_most_inner_type
 
 
 @cache
 def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
-
     model_fields = model_class.model_fields
 
     ref_fields = {
@@ -90,14 +90,13 @@ def _build_normalized_store_type(
 
     model_fields = model_class.model_fields
     for field, field_info in model_fields.items():
-
         inner_type = extract_most_inner_type(field_info.annotation)  # type: ignore
 
         if not is_reference_type(inner_type) and not is_list_reference_type(inner_type):
             continue
 
-        print("build_normalized_store_type:::", model_class)
-        print(" ->", field, inner_type)
+        # print("build_normalized_store_type:::", model_class)
+        # print(" ->", field, inner_type)
         _build_normalized_store_type(
             model_class=inner_type, normalized_fields=normalized_fields
         )
@@ -116,12 +115,10 @@ def _build_normalized_store_type(
 if __name__ == "__main__":
 
     class Customer(BaseModel):
-
         id: int
         name: str
 
     class Car(BaseModel):
-
         id: int
         name: str
         optional_value: str | None

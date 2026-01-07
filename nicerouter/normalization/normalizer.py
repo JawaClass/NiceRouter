@@ -23,7 +23,7 @@ class ObjectNormalizer:
     @cache
     def _is_reference_type(self, x):
         rt = is_reference_type(x)
-        print("is_reference_type", x, rt)
+        # print("is_reference_type", x, rt)
         return rt
 
     @cache
