@@ -29,13 +29,19 @@ def build_filter_by(filter_by: str, db_class: object):
                 detail=f"Invalid filter field: {field}. {type(col)} is not a column.",
             )
 
-        try:
-            py_type = col.type.python_type
-            value_casted = py_type(value)  # cast the string to correct Python type
-        except (ValueError, TypeError) as e:
-            raise HTTPException(
-                status_code=400, detail=f"Cannot cast value '{value}' to {py_type}: {e}"
-            )
+        if str(value).lower() == "false":
+            value_casted = False
+        elif str(value).lower() == "true":
+            value_casted = True
+        else:
+            try:
+                py_type = col.type.python_type
+                value_casted = py_type(value)  # cast the string to correct Python type
+            except (ValueError, TypeError) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot cast value '{value}' to {py_type}: {e}",
+                )
 
         filters.append(getattr(db_class, field) == value_casted)
 
