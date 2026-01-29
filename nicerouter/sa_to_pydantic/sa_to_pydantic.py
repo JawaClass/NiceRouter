@@ -200,9 +200,14 @@ def _sa_to_pydantic(
     fields: dict[str, Any] = {}
 
     for name, annotation in name2annotation.items():
+        
         if exclude_fields and name in exclude_fields:
             continue
-
+        
+        # pydantic does not allow private fields when dynamically creating models
+        if name.startswith("_"):
+            continue
+        
         allow_optional_ = allow_optional and allow_optional(model, name)
 
         field_kwargs = {}
@@ -273,7 +278,7 @@ def _sa_to_pydantic(
                     f"Unresolved type inside Mapped {inside_mapped_type=} {inside_mapped_type_origin=}"
                 )
 
-    NewModel: type[BaseModel] = create_model_cached(model_name, fields, base_model, namespace)
+    NewModel: type[BaseModel] = create_model_cached(model_name, fields=fields, base_model, namespace)
 
     registry_entry = PydanticRegistryEntry(
         model=NewModel,
