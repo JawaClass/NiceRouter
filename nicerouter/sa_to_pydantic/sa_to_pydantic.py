@@ -124,9 +124,9 @@ def sa_to_pydantic(
         print(f"{model=} {model_name=}")
         print("-")
         pprint(REGISTRY)
-    assert created_entry is not None, (
-        f"Pydantic model not found in Registry for {model}"
-    )
+    assert (
+        created_entry is not None
+    ), f"Pydantic model not found in Registry for {model}"
     pydantic_model = created_entry.model
 
     # print("sa_to_pydantic :: created model ", model_name)
@@ -200,14 +200,14 @@ def _sa_to_pydantic(
     fields: dict[str, Any] = {}
 
     for name, annotation in name2annotation.items():
-        
+
         if exclude_fields and name in exclude_fields:
             continue
-        
+
         # pydantic does not allow private fields when dynamically creating models
         if name.startswith("_"):
             continue
-        
+
         allow_optional_ = allow_optional and allow_optional(model, name)
 
         field_kwargs = {}
@@ -278,7 +278,9 @@ def _sa_to_pydantic(
                     f"Unresolved type inside Mapped {inside_mapped_type=} {inside_mapped_type_origin=}"
                 )
 
-    NewModel: type[BaseModel] = create_model_cached(model_name, fields=fields, base_model, namespace)
+    NewModel: type[BaseModel] = create_model_cached(
+        model_name, fields, base_model, namespace
+    )
 
     registry_entry = PydanticRegistryEntry(
         model=NewModel,
@@ -304,11 +306,13 @@ def _sa_to_pydantic(
 
 
 cached = {}
+
+
 def create_model_cached(model_name, fields, base_model, namespace) -> type[BaseModel]:
     if model_name in cached:
         return cached[model_name]
 
-    NewModel =  create_model(
+    NewModel = create_model(
         model_name,
         **fields,
         __base__=base_model or BaseModel,
