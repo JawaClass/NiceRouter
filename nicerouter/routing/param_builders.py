@@ -21,7 +21,7 @@ def build_filter_by(filter_by: str, db_class: object):
                 status_code=400, detail=f"Invalid filter field: {field}"
             )
 
-        col: Column = getattr(db_class.__table__.c, field)
+        col: Column = getattr(db_class.__table__.c, field) # type: ignore
 
         if not isinstance(col, Column):
             raise HTTPException(
