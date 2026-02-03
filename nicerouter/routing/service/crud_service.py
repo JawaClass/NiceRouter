@@ -5,6 +5,7 @@ from nicerouter.routing.param_builders import build_exclude_fields_set, build_se
 from nicerouter.routing.repository.crud_base_repository import BaseCrudRepository
 from nicerouter.routing.repository.crud_repository import CrudRepository
 from nicerouter.routing.service.crud_base_service import BaseCrudService
+from nicerouter.routing.service.dto_mapper import EntityDtoMapper
 from nicerouter.routing.service.service_util import check_entity_found
 from pydantic import BaseModel
 from nicerouter.routing.service.model_types import BatchInputModel_ContainerType, BatchItem_ContainerType
@@ -13,9 +14,9 @@ from sqlalchemy.orm import DeclarativeBase, load_only, Load
 
 class CrudService[T: DeclarativeBase](BaseCrudService[T, int]):
 
-    def __init__(self, repository: CrudRepository[T]) -> None:
-        super().__init__(repository)
+    def __init__(self, repository: CrudRepository[T], dto_mapper: EntityDtoMapper) -> None:
         self.repository = repository
+        self.dto_mapper = dto_mapper
 
     async def get_by_id(self, id: int) -> T | None:
         return await self.repository.get_by_id(id)

@@ -12,5 +12,5 @@ from nicerouter.routing.service.crud_service import CrudService
 class CrudNormalizeService[T: DeclarativeBase](CrudService):
 
     def __init__(self, repository: CrudRepository[T]) -> None:
-        super().__init__(repository)
+        self.repository = repository
         

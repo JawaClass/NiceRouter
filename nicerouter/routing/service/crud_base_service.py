@@ -2,15 +2,18 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterable, Sequence 
 from sqlalchemy.orm import DeclarativeBase 
 from nicerouter.routing.repository.crud_base_repository import BaseCrudRepository
+from nicerouter.routing.service.dto_mapper import EntityDtoMapper
 from nicerouter.routing.service.service_util import check_entity_found
 from pydantic import BaseModel
 from nicerouter.routing.service.model_types import BatchInputModel_ContainerType, BatchItem_ContainerType
 
 class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
  
-    def __init__(self, repository: BaseCrudRepository[T, ID]) -> None: 
-        # Every subclass will now have these attributes automatically
-        self.repository = repository 
+    # def __init__(self, repository: BaseCrudRepository[T, ID], dto_mapper: EntityDtoMapper) -> None: 
+    #     pass
+        # # Every subclass will now have these attributes automatically
+        # self.repository = repository 
+        # self.dto_mapper = dto_mapper
 
     @abstractmethod
     async def get_by_id(self, id: ID) -> T | None:

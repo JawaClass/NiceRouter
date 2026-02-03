@@ -3,6 +3,10 @@ from nicerouter.routing.service.crud_service import BaseCrudService
 from nicerouter.routing.repository.crud_base_repository import BaseCrudRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nicerouter.routing.service.dto_mapper import EntityDtoMapper
+
+
+
 class ServiceFactory[T: DeclarativeBase, ID]:
     """
     The Assembler. It knows how to build the Service and Repo.
@@ -12,7 +16,7 @@ class ServiceFactory[T: DeclarativeBase, ID]:
         self, 
         model_cls: type[T], 
         service_cls: type[BaseCrudService[T, ID]],
-        repo_cls: type[BaseCrudRepository[T, ID]]
+        repo_cls: type[BaseCrudRepository[T, ID]],
     ):
         self.model_cls = model_cls
         self.service_cls = service_cls
