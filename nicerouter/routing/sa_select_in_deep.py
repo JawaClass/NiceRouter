@@ -4,7 +4,7 @@ from typing import Any, Iterable
 import sqlalchemy as sa
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from sqlalchemy.orm import Load, selectinload, load_only
+from sqlalchemy.orm import Load, selectinload
 
 from nicerouter.routing.param_builders import build_select_fields
 from nicerouter.type_utils import extract_most_inner_type
@@ -34,7 +34,7 @@ def select_relationships_deep(
 
     loads: list[Load] = []
     exclude_fields_set = set(exclude_field_names or [])
- 
+
     # explore pydantic model mask fields for further selects
     for field_name, field_info in mask_struct.items():
         if field_name not in relationships:

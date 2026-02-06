@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from sqlalchemy import ColumnExpressionArgument
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.schema import Column
 
@@ -12,8 +13,17 @@ def is_column_field(db_class: object, field: str):
 
 
 def build_filter_by(filter_by: str, db_class: object):
-    filter_expresssions = filter_by.split(",")
-    filters = []
+    
+    filters: list[ColumnExpressionArgument] = []
+    
+    if not filter_by:
+        return filters
+    
+    filter_expresssions = filter_by.split(",") 
+    
+    if not filter_expresssions:
+        return filters
+     
     for filter_expr in filter_expresssions:
         field, value = filter_expr.split("=")
         if not is_column_field(db_class, field):
@@ -40,7 +50,7 @@ def build_filter_by(filter_by: str, db_class: object):
             except (ValueError, TypeError) as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Cannot cast value '{value}' to {py_type}: {e}",
+                    detail=f"Cannot cast value '{value}' to {py_type}: {e}", # type: ignore
                 )
 
         filters.append(getattr(db_class, field) == value_casted)

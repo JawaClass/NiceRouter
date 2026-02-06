@@ -17,11 +17,11 @@ class EntityDtoMapper[T_DTO: BaseModel, T_ENTITY: DeclarativeBase](ABC):
         self.entity_cls = entity_cls
  
     @abstractmethod 
-    def dto2entity(self, obj: T_DTO) -> T_ENTITY:
+    def dto2entity(self, dto: T_DTO) -> T_ENTITY:
         pass
 
     @abstractmethod 
-    def entity2dto(self, obj: T_ENTITY) -> T_DTO:
+    def entity2dto(self, entity: T_ENTITY) -> T_DTO:
         pass
 
 
@@ -32,7 +32,7 @@ class EntityDtoMapperSameObjectImpl[T_DTO: BaseModel, T_ENTITY: DeclarativeBase]
         entity = self.entity_cls(**dto.model_dump())
         return entity
 
-    def entity2dto(self,entity: T_ENTITY) -> T_DTO:
+    def entity2dto(self, entity: T_ENTITY) -> T_DTO:
         dto = self.dto_cls.model_validate(entity)
         return dto
 

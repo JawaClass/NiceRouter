@@ -21,21 +21,22 @@ app = FastAPI(lifespan=lifespan)  # type: ignore
 user_router = create_router_for_db(db_class=User, prefix="/user", get_db_session=get_db)
 
 
-app.include_router(user_router)
+app.include_router(user_router.api_router)
 
 
 todo_router = create_router_for_db(
     db_class=ToDoItem, prefix="/todos", get_db_session=get_db
 )
-app.include_router(todo_router)
+app.include_router(todo_router.api_router)
 
 urgency_router = create_router_for_db(
     db_class=UrgencyLevel, prefix="/urgency", get_db_session=get_db
 )
-app.include_router(urgency_router)
+app.include_router(urgency_router.api_router)
 
 
- 
-app.include_router(create_router_for_db(
+pandas_router = create_router_for_db(
     db_class=Panda, prefix="/pandas", get_db_session=get_db
-))
+)
+ 
+app.include_router(pandas_router.api_router)

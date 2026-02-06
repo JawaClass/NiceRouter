@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nicerouter.normalization.normalizer import ObjectNormalizer
+from nicerouter.routing.service.crud_service import CrudService
 
 
 class GetByIdConfig(BaseModel):
@@ -32,13 +33,13 @@ class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     response_model: type[BaseModel]
     normalizer: ObjectNormalizer | None = None
     preprocessor_input: Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]] | None = None
-
+    
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     input_model: type[BaseModel]
-    response_model: type[BaseModel] | None = None
+    response_model: type[BaseModel]
     preprocessor_input: PreProcessorCallable[INPUT_MODEL] | None = None
 
 
@@ -53,9 +54,13 @@ class DeleteMultiRouteConfig(BaseModel):
 
 class CreateRouterConfig(BaseModel):
     db_class: type[Any]
+    service: CrudService
     get_by_id_route: GetByIdConfig | None = None
     get_all_route: GetAllConfig | None = None
     create_route: CreateRouteConfig | None = None
     patch_route: PatchRouteConfig | None = None
     delete_route: DeleteRouteConfig | None = None
     delete_multi_route: DeleteMultiRouteConfig | None = None
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    

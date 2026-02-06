@@ -294,7 +294,7 @@ def _sa_to_pydantic(
 
     REGISTRY[namespace][model_name] = registry_entry
 
-    created_models[name] = NewModel
+    created_models[model_name] = NewModel
 
     assert namespace in REGISTRY
     assert model_name in REGISTRY[namespace]

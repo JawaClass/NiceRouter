@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 import sqlalchemy as sa
 from fastapi import HTTPException, status
@@ -192,7 +192,7 @@ async def get_by_id[E](
     return item
 
 
-def tags_from_prefix(prefix: str):
+def tags_from_prefix(prefix: str) -> Sequence[str]:
     return [prefix.strip("/").split("/")[0]]
 
 

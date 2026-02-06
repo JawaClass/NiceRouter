@@ -1,3 +1,27 @@
 {
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+
+    // Pylance mode seetings for full
+
+    "python.analysis.typeCheckingMode": "standard",
+    "python.analysis.exclude": [],
+
+  "python.analysis.useLibraryCodeForTypes": true,
+  "python.analysis.enablePytestSupport": true,
+  "python.analysis.indexing": true,
+
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.showOnlyDirectDependenciesInAutoImport": true,
+
+  "python.analysis.regenerateStdLibIndices": true,
+  "python.analysis.userFileIndexingLimit": -1,
+  "python.analysis.includeAliasesFromUserFiles": true,
+
+  "python.analysis.functionReturnTypes": true,
+  "python.analysis.pytestParameters": true,
+
+  "python.analysis.supportRestructuredText": true,
+  "python.analysis.supportDocstringTemplate": true,
+
+  "python.analysis.nodeExecutable": "auto"
 }

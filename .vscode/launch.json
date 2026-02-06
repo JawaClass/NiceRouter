@@ -13,6 +13,25 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
-    }
+    },
+    // DEBUG FAST API EXAMPLE APP
+
+     {
+            "name": "Debug Example App",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "fastapi",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "dev",
+                "example/app.py", 
+                "--port",
+                "3398",
+                "--reload"
+            ],
+            "jinja": true,
+            "python": "${workspaceFolder}/.venv/bin/python" 
+        }
+
   ]
 }

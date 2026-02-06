@@ -1,44 +1,54 @@
-from collections.abc import AsyncGenerator, Awaitable, Callable 
-from fastapi import Depends, HTTPException, Query, Request
+from collections.abc import AsyncGenerator, Callable
+from typing import Awaitable
+from fastapi import Depends, Response
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from nicerouter.normalization.normalizer import ObjectNormalizer
-from nicerouter.normalization.object_builders import build_normalized_store_object
-from nicerouter.normalization.type_builder import build_normalized_store_type
-from nicerouter.routing import routes_service
-from nicerouter.routing.models import ResponseType
-from nicerouter.routing.param_builders import get_db_class_fields
-from nicerouter.routing.routes_service import sa_to_dict, tags_from_prefix
-from nicerouter.routing.sa_select_in_deep import select_relationships_deep
-from nicerouter.routing.service.crud_service import CrudService 
-from nicerouter.routing.service.service_factory import ServiceFactory
+from nicerouter.routing.types import NiceAPIRoute
+from nicerouter.routing.routes_service import tags_from_prefix
 from sqlalchemy.orm import DeclarativeBase
-from nicerouter.routing.service.service_util import check_entity_found
+
+from nicerouter.routing.service.crud_base_service import BaseCrudService
+
 
 def create_delete_by_id_route[T_DB: DeclarativeBase](
     *,
-    response_model: type[object] | None = None,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    service_factory: ServiceFactory[T_DB, int],
+    service: BaseCrudService[T_DB, int],
     prefix: str,
-) -> APIRoute:
-     
-    async def endpoint(
-        id: int, db: AsyncSession = Depends(get_db_session) # type: ignore
-    ):  # type: ignore  # noqa: A002
-        
-        service = service_factory.create(db=db)
-         
-        await service.delete_by_id(id=id)
-        
-        return True
+    preprocessor_input: (Callable[[int, AsyncSession], Awaitable[None]] | None) = None,
+    postprocessor_output: (
+        Callable[[bool, AsyncSession], Awaitable[None]] | None
+    ) = None,
+) -> NiceAPIRoute:
 
-    return APIRoute(
-        path=f"{prefix}/{{id}}",
-        methods=["DELETE"],
-        tags=tags_from_prefix(prefix),  # type:ignore
-        response_model=response_model,
-        endpoint=endpoint,
+    async def endpoint(
+        id: int,
+        db: AsyncSession = Depends(get_db_session),
+    ):
+
+        if preprocessor_input:
+            await preprocessor_input(id, db)
+
+        deleted = await service.delete_by_id(session=db, id=id)
+
+        if not deleted:
+            raise RuntimeError(
+                f"Entity with id {id=} not found. Pass a existing id to delete."
+            )
+
+        if postprocessor_output:
+            await postprocessor_output(deleted, db)
+
+        return Response()
+
+    route = NiceAPIRoute(
+        route=APIRoute(
+            path=f"{prefix}/{{id}}",
+            methods=["DELETE"],
+            tags=tags_from_prefix(prefix),  # type:ignore
+            response_model=None,
+            endpoint=endpoint,
+        ),
+        service=service,
     )
+    return route
