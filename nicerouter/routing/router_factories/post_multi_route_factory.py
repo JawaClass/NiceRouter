@@ -9,7 +9,7 @@ from nicerouter.routing.service.crud_service import CrudService
 from sqlalchemy.orm import DeclarativeBase
 
 
-def create_post_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
+def create_post_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
     *,
     input_model: type[T_DTO],
     response_model: type[BaseModel],
@@ -17,34 +17,34 @@ def create_post_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
     service: CrudService[T_DB, T_DTO],
     prefix: str,
     preprocessor_input: (
-        Callable[[T_DTO, AsyncSession], Awaitable[T_DTO]] | None
+        Callable[[list[T_DTO], AsyncSession], Awaitable[list[T_DTO]]] | None
     ) = None,
     postprocessor_output: (
-        Callable[[T_DB, AsyncSession], Awaitable[T_DB]] | None
+        Callable[[list[T_DB], AsyncSession], Awaitable[list[T_DB]]] | None
     ) = None,
 ) -> NiceAPIRoute:
 
     async def endpoint(
-        payload: input_model, # type: ignore
+        payload: list[input_model], # type: ignore
         db: AsyncSession = Depends(get_db_session),  # type: ignore
     ):  # type: ignore  # noqa: A002
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
         
-        entity = await service.create(session=db, dto=payload)
+        entity_list = await service.create_multi(session=db, dto_list=payload)
 
         if postprocessor_output:
-            entity = await postprocessor_output(entity, db)
+            entity_list = await postprocessor_output(entity_list, db)
 
         from nicerouter.sa_to_dict import sa_to_dict
-        entity = sa_to_dict(entity)
-        return entity
+        entity_list = sa_to_dict(entity_list)
+        return entity_list
 
     route = NiceAPIRoute(
-        route=APIRoute(path=f"{prefix}",
+        route=APIRoute(path=f"{prefix}/multi",
         methods=["POST"],
         tags=tags_from_prefix(prefix),  # type:ignore
-        response_model=response_model,
+        response_model=list[response_model],
         endpoint=endpoint,),
         service=service,
     )

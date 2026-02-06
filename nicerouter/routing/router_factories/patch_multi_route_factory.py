@@ -52,7 +52,7 @@ def create_patch_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
 
     route = NiceAPIRoute(
         route=APIRoute(
-        path=f"{prefix}",
+        path=f"{prefix}/multi",
         methods=["PATCH"],
         tags=tags_from_prefix(prefix),  # type: ignore
         response_model=response_model,

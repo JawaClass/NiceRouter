@@ -127,33 +127,4 @@ class CrudRepository[T: DeclarativeBase](BaseCrudRepository[T, int]):
         )
 
         return result
-
-    async def get_multi_with_options(
-        self,
-        session: AsyncSession,
-        response_model: type[BaseModel],
-        exclude_fields: list[str],
-        max_depth: int,
-        where_clause: Iterable[ColumnExpressionArgument[Any]] | None = None,
-        offset: int | None = None,
-        limit: int | None = None,
-    ) -> Iterable[T]:
-
-        db_class = self.model_cls
-
-        options = build_query_options(
-            db_class=db_class,
-            exclude_fields=exclude_fields,
-            max_depth=max_depth,
-            response_model=response_model,
-        )
-
-        result = await self.get_many(
-            session=session,
-            options=options,
-            limit=limit,
-            offset=offset,
-            where_clause=where_clause,
-        )
-
-        return result
+ 

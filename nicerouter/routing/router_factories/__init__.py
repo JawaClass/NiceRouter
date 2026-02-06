@@ -5,3 +5,4 @@ from .get_many_route_factory import create_get_multi_route  # noqa: F401
 from .patch_multi_route_factory import create_patch_multi_route  # noqa: F401
 from .patch_route_factory import create_patch_route  # noqa: F401
 from .post_route_factory import create_post_route  # noqa: F401
+from .post_multi_route_factory import create_post_multi_route  # noqa: F401

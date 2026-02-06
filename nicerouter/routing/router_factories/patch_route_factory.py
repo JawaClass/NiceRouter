@@ -27,8 +27,8 @@ def create_patch_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
     async def endpoint(
         id: int,
         payload: input_model, # type: ignore
-        db: AsyncSession = Depends(get_db_session),  # type: ignore
-    ):  # type: ignore  # noqa: A002
+        db: AsyncSession = Depends(get_db_session),
+    ): 
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
 

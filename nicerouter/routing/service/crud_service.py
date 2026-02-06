@@ -1,6 +1,6 @@
 from typing import Iterable, Sequence
 from sqlalchemy.orm import DeclarativeBase
-from nicerouter.routing.repository.crud_repository import CrudRepository
+from nicerouter.routing.repository.crud_repository import CrudRepository, build_query_options
 from nicerouter.routing.service.crud_base_service import BaseCrudService, GetManyParams
 from nicerouter.routing.service.dto_mapper import EntityDtoMapper
 from nicerouter.routing.service.service_util import check_entity_found
@@ -8,8 +8,7 @@ from pydantic import BaseModel
 from nicerouter.routing.service.model_types import (
     BatchInputModel_ContainerType,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.ext.asyncio import AsyncSession 
 
 class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
     def __init__(
@@ -49,6 +48,24 @@ class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
         entity = await self.save(session=session, entity=entity)
         return entity
 
+    async def create_multi(self, session: AsyncSession, dto_list: list[DTO]) -> list[T]:
+        created_entities: list[T] = []
+
+        print("create_multi dto_list....", type(dto_list))
+        for d in dto_list:
+            print(type(d), d)
+        for dto in dto_list:
+            entity = self.dto_mapper.dto2entity(dto)
+            entity = await self.repository.save(session, entity)
+            created_entities.append(entity)
+        
+        await session.commit()
+
+        for entity in created_entities:
+            await session.refresh(entity)
+
+        return created_entities
+    
     async def delete_by_id(self, session: AsyncSession, id: int) -> bool:
 
         deleted = await self.repository.delete_by_id(session, id)
@@ -75,17 +92,27 @@ class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
     async def get_many(
         self, session: AsyncSession, params: GetManyParams
     ) -> Iterable[T]:
+        
+        db_class = self.repository.model_cls
+
+        options = build_query_options(
+            db_class=db_class,
+            exclude_fields=params.get("exclude_fields") or [],
+            max_depth=params.get("max_depth") or 0,
+            response_model=params.get("response_model"),
+        )
 
         result = await self.repository.get_many(
             session=session,
             limit=params.get("limit"),
             offset=params.get("offset"),
-            options=params.get("options"),
+            options=options,
             where_clause=params.get("where_clause"),
         )
 
         return result
-
+ 
+    
     async def partial_update(
         self, session: AsyncSession, id: int, updates: BaseModel
     ) -> T:

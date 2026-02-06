@@ -47,26 +47,37 @@ def create_get_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
 ) -> NiceAPIRoute:
 
     async def endpoint(
-        db: AsyncSession = Depends(get_db_session),  # type: ignore
+        db: AsyncSession = Depends(get_db_session),
         params: CommonQueryParams = Depends(),
-    ):  # type: ignore  # noqa: A002
+    ):  
 
-        # exclude_fields: list[str] = (
-        #     list(build_exclude_fields_set(params.exclude_fields))
-        #     if params.exclude_fields
-        #     else []
-        # )
+        exclude_fields: list[str] = (
+            list(build_exclude_fields_set(params.exclude_fields))
+            if params.exclude_fields
+            else []
+        )
 
         db_class = service.repository.model_cls
+
+        where_clause = build_filter_by(
+                filter_by=params.filter_by, db_class=db_class
+            ) if params.filter_by else []
+        
+        
         get_many_params: GetManyParams = {
+            "max_depth": params.max_depth,
+            "exclude_fields": exclude_fields,
+            "response_model": response_model,
             "limit": params.limit,
             "offset": params.offset,
-            "where_clause": build_filter_by(
-                filter_by=params.filter_by or "", db_class=db_class
-            ),
+            "where_clause": where_clause,
         }
 
         entities = await service.get_many(session=db, params=get_many_params)
+
+        from nicerouter.sa_to_dict import sa_to_dict
+
+        entities = sa_to_dict(entities)
 
         return entities
 
@@ -75,7 +86,7 @@ def create_get_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
             path=f"{prefix}",
             methods=["GET"],
             tags=tags_from_prefix(prefix),  # type:ignore
-            response_model=response_model,
+            response_model=list[response_model],
             endpoint=endpoint,
         ),
         service=service,

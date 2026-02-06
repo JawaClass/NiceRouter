@@ -22,3 +22,7 @@ class NiceAPIRouter:
     def add_route(self, route: NiceAPIRoute):
         self._routes.append(route)
         self.api_router.routes.append(route.route)
+
+    @property
+    def service(self):
+        return self.nice_config.service

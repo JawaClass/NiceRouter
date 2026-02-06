@@ -56,6 +56,10 @@ def create_get_by_id_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
 
         entity = check_entity_found(entity)
 
+        from nicerouter.sa_to_dict import sa_to_dict
+
+        entity = sa_to_dict(entity)
+
         return entity
 
     route = NiceAPIRoute(

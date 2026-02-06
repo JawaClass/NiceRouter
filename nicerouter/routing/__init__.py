@@ -26,6 +26,7 @@ from nicerouter.routing.router_factories import (
     # create_patch_multi_route,
     create_patch_route,
     create_post_route,
+    create_post_multi_route
 )
 from nicerouter.routing.types import  NiceAPIRouter
 
@@ -124,6 +125,19 @@ def create_router(
                 service=config.service,
             )
         )
+        
+        nice_router.add_route(
+            route=create_post_multi_route( 
+                input_model=config.create_route.input_model,
+                response_model=config.create_route.response_model,
+                get_db_session=get_db_session,
+                prefix=prefix,
+                # normalizer=config.create_route.normalizer,
+                preprocessor_input=config.create_route.preprocessor_input,
+                service=config.service,
+            )
+        )
+        
 
     if config.patch_route:
         #     router.routes.append(

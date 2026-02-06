@@ -12,10 +12,13 @@ from nicerouter.routing.service.model_types import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-class GetManyParams(TypedDict, total=False):
+class GetManyParams(TypedDict, total=True):
     where_clause: Iterable[ColumnExpressionArgument[Any]]
     offset: int | None
     limit: int | None
+    response_model: type[BaseModel]
+    max_depth: int | None
+    exclude_fields: list[str] | None
     
 class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
 
