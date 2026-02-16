@@ -8,10 +8,10 @@ from nicerouter.routing.routes_service import tags_from_prefix
 from nicerouter.routing.service.crud_service import CrudService
 from sqlalchemy.orm import DeclarativeBase
 
-def create_delete_multi_route[T_DB: DeclarativeBase](
+def create_delete_multi_route[T_DB: DeclarativeBase, DTO: BaseModel](
     *,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    service: CrudService[T_DB, BaseModel],
+    service: CrudService[T_DB, DTO],
     prefix: str,
 ) -> NiceAPIRoute:
      

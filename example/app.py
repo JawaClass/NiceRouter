@@ -20,7 +20,8 @@ app = FastAPI(lifespan=lifespan)  # type: ignore
 
 user_router = create_router_for_db(db_class=User, prefix="/user", get_db_session=get_db)
 
-
+user_router.nice_config.service.create()
+ 
 app.include_router(user_router.api_router)
 
 

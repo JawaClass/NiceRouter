@@ -1,4 +1,5 @@
-from typing import AsyncGenerator, Callable
+from re import S
+from typing import Any, AsyncGenerator, Callable
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,10 +35,8 @@ from nicerouter.routing.service.crud_service import CrudRepository
 from nicerouter.routing.service.dto_mapper import EntityDtoMapperSameObjectImpl
 
 
-def build_router_config(
-    service: CrudService,
-    # db_class: type[DeclarativeBase],
-    # normalizer: ObjectNormalizer | None = None,
+def build_router_config[T: DeclarativeBase, DTO: BaseModel](
+    service: CrudService[T, DTO], 
     model_scheme_in: type[BaseModel] | None = None,
     out_schema_optional_fields: bool = True,
 ):
@@ -94,21 +93,25 @@ def create_router_for_db(
             entity_cls=db_class, dto_cls=ModelSchemaIn
         ),
     )
+     
     router_config = build_router_config(service=service)
-
+ 
     return create_router(
-        prefix=prefix, get_db_session=get_db_session, config=router_config
+        prefix=prefix, get_db_session=get_db_session, config=router_config,
+        service=service,
     )
 
 
-def create_router(
+def create_router[T: DeclarativeBase, DTO: BaseModel](
     *,
     prefix: str,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession, None]],
     config: CreateRouterConfig,
+    service: CrudService[T, DTO],
 ) -> NiceAPIRouter:
-    nice_router = NiceAPIRouter(nice_config=config, router=APIRouter(prefix=prefix))
+    nice_router = NiceAPIRouter(nice_config=config, router=APIRouter(prefix=prefix), service=service)
     nice_router.nice_config = config
+ 
 
     # db_class = config.db_class
 
@@ -122,7 +125,7 @@ def create_router(
                 prefix=prefix,
                 # normalizer=config.create_route.normalizer,
                 preprocessor_input=config.create_route.preprocessor_input,
-                service=config.service,
+                service=service,
             )
         )
         
@@ -134,7 +137,7 @@ def create_router(
                 prefix=prefix,
                 # normalizer=config.create_route.normalizer,
                 preprocessor_input=config.create_route.preprocessor_input,
-                service=config.service,
+                service=service,
             )
         )
         
@@ -148,7 +151,7 @@ def create_router(
         #             get_db_session=get_db_session,
         #             prefix=prefix,
         #         )
-        #     )
+        #     ) 
         nice_router.add_route(
             create_patch_route(
                 # db_class=db_class,
@@ -157,7 +160,7 @@ def create_router(
                 get_db_session=get_db_session,
                 prefix=prefix,
                 preprocessor_input=config.patch_route.preprocessor_input,
-                service=config.service,
+                service=service, 
             ),
         )
 
@@ -169,7 +172,7 @@ def create_router(
                 response_model=config.get_all_route.response_model,
                 prefix=prefix,
                 # normalizer=config.get_all_route.normalizer,
-                service=config.service,
+                service=service,
             ),
         )
 
@@ -178,7 +181,7 @@ def create_router(
             create_delete_by_id_route(
                 get_db_session=get_db_session,
                 prefix=prefix,
-                service=config.service,
+                service=service,
             ),
         )
 
@@ -188,11 +191,24 @@ def create_router(
                 # db_class=db_class,
                 get_db_session=get_db_session,
                 prefix=prefix,
-                service=config.service,
+                service=service,
             ),
         )
-
+ 
+    
     if config.get_by_id_route:
+        
+        # test/....
+        create_get_by_id_route(
+                # db_class=db_class,
+                response_model=config.get_by_id_route.response_model,
+                get_db_session=get_db_session,
+                # query=config.get_by_id_route.query,
+                # normalizer=config.get_by_id_route.normalizer,
+                prefix=prefix,
+                service=service,
+            )
+        
         nice_router.add_route(
             create_get_by_id_route(
                 # db_class=db_class,
@@ -201,7 +217,7 @@ def create_router(
                 # query=config.get_by_id_route.query,
                 # normalizer=config.get_by_id_route.normalizer,
                 prefix=prefix,
-                service=config.service,
+                service=service,
             ),
         )
 

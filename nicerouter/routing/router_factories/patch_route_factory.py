@@ -9,9 +9,9 @@ from nicerouter.routing.service.crud_service import CrudService
 from sqlalchemy.orm import DeclarativeBase
 
 
-def create_patch_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
+def create_patch_route[T_DB: DeclarativeBase, T_DTO: BaseModel,T_IN: BaseModel](
     *,
-    input_model: type[T_DTO],
+    input_model: type[T_IN],
     response_model: type[T_DTO],
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
     service: CrudService[T_DB, T_DTO],
@@ -22,7 +22,7 @@ def create_patch_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
     postprocessor_output: (
         Callable[[T_DB, AsyncSession], Awaitable[T_DB]] | None
     ) = None,
-) -> NiceAPIRoute:
+) -> NiceAPIRoute[T_DB, T_DTO]:
 
     async def endpoint(
         id: int,

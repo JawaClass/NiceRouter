@@ -4,7 +4,7 @@ from typing import Any
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import DeclarativeBase
 from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.routing.service.crud_service import CrudService
 
@@ -53,8 +53,7 @@ class DeleteMultiRouteConfig(BaseModel):
 
 
 class CreateRouterConfig(BaseModel):
-    db_class: type[Any]
-    service: CrudService
+    db_class: type[Any] 
     get_by_id_route: GetByIdConfig | None = None
     get_all_route: GetAllConfig | None = None
     create_route: CreateRouteConfig | None = None
