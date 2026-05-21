@@ -1,27 +1,26 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Sequence, TypedDict, Unpack
-from sqlalchemy import ColumnExpressionArgument
-from sqlalchemy.orm import DeclarativeBase
-from nicerouter.routing.repository.crud_base_repository import BaseCrudRepository
-from nicerouter.routing.service.dto_mapper import EntityDtoMapper
-from nicerouter.routing.service.service_util import check_entity_found
+from typing import Any, Iterable, Sequence, TypedDict
+
 from pydantic import BaseModel
+from sqlalchemy import ColumnExpressionArgument
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import DeclarativeBase
+
 from nicerouter.routing.service.model_types import (
     BatchInputModel_ContainerType,
-    BatchItem_ContainerType,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 class GetManyParams(TypedDict, total=True):
     where_clause: Iterable[ColumnExpressionArgument[Any]]
     offset: int | None
     limit: int | None
-    response_model: type[BaseModel]
+    mask_class: type[BaseModel]
     max_depth: int | None
     exclude_fields: list[str] | None
-    
-class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
 
+
+class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
     @abstractmethod
     async def get_by_id(self, session: AsyncSession, id: ID) -> T | None:
         pass
@@ -31,7 +30,9 @@ class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
         pass
 
     @abstractmethod
-    async def get_many(self, session: AsyncSession, params: GetManyParams) -> Iterable[T]:
+    async def get_many(
+        self, session: AsyncSession, params: GetManyParams
+    ) -> Iterable[T]:
         pass
 
     @abstractmethod
@@ -43,15 +44,15 @@ class BaseCrudService[T: DeclarativeBase, ID: object](ABC):
         pass
 
     @abstractmethod
-    async def partial_update(
-        self, session: AsyncSession, id: ID, updates: BaseModel
+    async def partial_update[UPDATE: BaseModel](
+        self, session: AsyncSession, id: ID, updates: UPDATE
     ) -> T:
         pass
 
     @abstractmethod
-    async def partial_update_multi(
+    async def partial_update_multi[UPDATE: BaseModel](
         self,
         session: AsyncSession,
-        update_list: BatchInputModel_ContainerType[ID, BaseModel],
+        update_list: BatchInputModel_ContainerType[ID, UPDATE],
     ) -> Sequence[T]:
         pass

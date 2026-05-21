@@ -23,5 +23,15 @@
   "python.analysis.supportRestructuredText": true,
   "python.analysis.supportDocstringTemplate": true,
 
-  "python.analysis.nodeExecutable": "auto"
+  "python.analysis.nodeExecutable": "auto",
+
+  "editor.formatOnSave": true,
+"editor.defaultFormatter": "charliermarsh.ruff",
+
+   "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "always",
+      "source.organizeImports.ruff": "always"
+    }
+  }
 }

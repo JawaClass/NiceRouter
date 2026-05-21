@@ -1,35 +1,58 @@
-from collections.abc import AsyncGenerator, Callable 
-from fastapi import Depends, Response
+from collections.abc import AsyncGenerator, Callable
+from typing import Any, Awaitable
+
+from fastapi import Depends
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from nicerouter.routing.types import NiceAPIRoute
+
 from nicerouter.routing.routes_service import tags_from_prefix
 from nicerouter.routing.service.crud_service import CrudService
-from sqlalchemy.orm import DeclarativeBase
+from nicerouter.routing.service.types import EntiyType, InputType, OutputType
+from nicerouter.routing.types import NiceAPIRoute
 
-def create_delete_multi_route[T_DB: DeclarativeBase, DTO: BaseModel](
+
+def create_delete_multi_route[
+    Entiy: EntiyType,
+    Input: InputType,
+    Output: OutputType,
+    ResponseType,
+](
     *,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    service: CrudService[T_DB, DTO],
+    service: CrudService[Entiy, Input, Output, Any],
     prefix: str,
-) -> NiceAPIRoute:
-     
-    async def endpoint(
-        id_list: list[int], db: AsyncSession = Depends(get_db_session) 
-    ):  
-                
-        await service.delete_multi(session=db, id_list=id_list)
-        
-        return Response()
+    response_model: ResponseType = None,
+    postprocessor_output: (
+        Callable[
+            [bool, AsyncSession, CrudService[Entiy, Input, Output, Any]],
+            Awaitable[ResponseType],
+        ]
+        | None
+    ) = None,
+    **route_kwargs: Any,
+) -> NiceAPIRoute[Entiy, Input, Output, Any]:
+
+    async def endpoint(id_list: list[int], db: AsyncSession = Depends(get_db_session)):
+
+        deleted = await service.delete_multi(session=db, id_list=id_list)
+
+        response = None
+
+        if postprocessor_output:
+            response = await postprocessor_output(deleted, db, service)
+
+        return response
 
     route = NiceAPIRoute(
-        route=APIRoute(path=f"{prefix}",
-        methods=["DELETE"],
-        tags=tags_from_prefix(prefix),  # type:ignore
-        response_model=None,
-        endpoint=endpoint),
+        route=APIRoute(
+            path=f"{prefix}",
+            methods=["DELETE"],
+            tags=tags_from_prefix(prefix),  # type:ignore
+            response_model=response_model,
+            endpoint=endpoint,
+            **route_kwargs,
+        ),
         service=service,
     )
-    
+
     return route

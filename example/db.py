@@ -1,13 +1,12 @@
 from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from typing import List
-from example.model import Base
 from sqlalchemy import event
-from example.model import User, ToDoItem, UrgencyLevel
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from example.model import Base, ToDoItem, UrgencyLevel, User
 
 # ----------------------
 # Async DB setup (SQLite in-memory)
@@ -69,3 +68,7 @@ async def seed_db():
 async def get_db() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as session:
         yield session
+
+
+def get_db_sync() -> AsyncSession:
+    return AsyncSessionLocal()

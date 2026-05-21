@@ -1,15 +1,18 @@
 from collections.abc import AsyncGenerator, Callable
+from typing import Any
+
 from fastapi import Depends
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from nicerouter.routing.types import NiceAPIRoute
+
 from nicerouter.routing.models import ResponseType
 from nicerouter.routing.param_builders import build_exclude_fields_set
 from nicerouter.routing.routes_service import tags_from_prefix
-from sqlalchemy.orm import DeclarativeBase
-from nicerouter.routing.service.service_util import check_entity_found
 from nicerouter.routing.service.crud_service import CrudService
+from nicerouter.routing.service.service_util import check_entity_found
+from nicerouter.routing.service.types import EntiyType, InputType, OutputType
+from nicerouter.routing.types import NiceAPIRoute
 
 
 class CommonQueryParams(BaseModel):
@@ -27,13 +30,14 @@ class CommonQueryParams(BaseModel):
     )
 
 
-def create_get_by_id_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
+def create_get_by_id_route[Entiy: EntiyType, Input: InputType, Output: OutputType](
     *,
-    response_model: type[T_DTO],
+    mask_class: type[BaseModel],
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    service: CrudService[T_DB, T_DTO],
+    service: CrudService[Entiy, Input, Output, Any],
     prefix: str,
-) -> NiceAPIRoute:
+    **route_kwargs: Any,
+) -> NiceAPIRoute[Entiy, Input, Output, Any]:
 
     async def endpoint(
         id: int,
@@ -49,26 +53,27 @@ def create_get_by_id_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
         entity = await service.get_by_id_with_options(
             session=db,
             id=id,
-            response_model=response_model,
+            mask_class=mask_class,
             max_depth=params.max_depth,
             exclude_fields=exclude_fields,
         )
 
         entity = check_entity_found(entity)
 
-        from nicerouter.sa_to_dict import sa_to_dict
+        entity_as_output = service.entity_mapper.entity2output(entity)
 
-        entity = sa_to_dict(entity)
+        return entity_as_output
 
-        return entity
-
+    response_model = service.entity_mapper.output_cls
     route = NiceAPIRoute(
         route=APIRoute(
-        path=f"{prefix}/{{id}}",
-        methods=["GET"],
-        tags=tags_from_prefix(prefix),  # type:ignore
-        response_model=response_model,
-        endpoint=endpoint,),
+            path=f"{prefix}/{{id}}",
+            methods=["GET"],
+            tags=tags_from_prefix(prefix),  # type:ignore
+            response_model=response_model,
+            endpoint=endpoint,
+            **route_kwargs,
+        ),
         service=service,
     )
     return route

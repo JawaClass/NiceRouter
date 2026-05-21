@@ -1,18 +1,20 @@
 from typing import Any, Iterable
+
+from pydantic import BaseModel
+from sqlalchemy import ColumnExpressionArgument, Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, load_only
-from sqlalchemy import ColumnExpressionArgument, select, Select
+from sqlalchemy.sql.base import ExecutableOption
+
 from nicerouter.routing.param_builders import build_select_fields
 from nicerouter.routing.repository.crud_base_repository import BaseCrudRepository
 from nicerouter.routing.sa_select_in_deep import select_relationships_deep
-from pydantic import BaseModel
-from sqlalchemy.sql.base import ExecutableOption
 
 
 def build_query_options[T: DeclarativeBase](
     db_class: type[T],
     exclude_fields: list[str],
-    response_model: type[BaseModel],
+    mask_class: type[BaseModel],
     max_depth: int,
 ) -> list[ExecutableOption]:
 
@@ -24,7 +26,7 @@ def build_query_options[T: DeclarativeBase](
 
     nested_options = select_relationships_deep(
         db_class,
-        response_model,
+        mask_class,
         exclude_field_names=set(exclude_fields),
         max_depth=max_depth,
     )
@@ -37,7 +39,7 @@ def build_query_options[T: DeclarativeBase](
 class CrudRepository[T: DeclarativeBase](BaseCrudRepository[T, int]):
 
     def __init__(self, model_cls: type[T]) -> None:
-        super().__init__(model_cls=model_cls)
+        super().__init__(model_cls= model_cls)
 
     async def get_by_id(
         self,
@@ -107,7 +109,7 @@ class CrudRepository[T: DeclarativeBase](BaseCrudRepository[T, int]):
         self,
         session: AsyncSession,
         id: int,
-        response_model: type[BaseModel],
+        mask_class: type[BaseModel],
         exclude_fields: list[str],
         max_depth: int,
         id_field: str = "id",
@@ -119,7 +121,7 @@ class CrudRepository[T: DeclarativeBase](BaseCrudRepository[T, int]):
             db_class=db_class,
             exclude_fields=exclude_fields,
             max_depth=max_depth,
-            response_model=response_model,
+            mask_class=mask_class,
         )
 
         result = await self.get_by_id(

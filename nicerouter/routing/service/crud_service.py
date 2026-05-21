@@ -1,71 +1,92 @@
-from typing import Iterable, Sequence
-from sqlalchemy.orm import DeclarativeBase
-from nicerouter.routing.repository.crud_repository import CrudRepository, build_query_options
-from nicerouter.routing.service.crud_base_service import BaseCrudService, GetManyParams
-from nicerouter.routing.service.dto_mapper import EntityDtoMapper
-from nicerouter.routing.service.service_util import check_entity_found
+from typing import Any, Iterable, Sequence
+
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from nicerouter.routing.repository.crud_repository import (
+    CrudRepository,
+    build_query_options,
+)
+from nicerouter.routing.service.crud_base_service import BaseCrudService, GetManyParams
+from nicerouter.routing.service.entity_mappers.mapper import ServiceEntityMapper
 from nicerouter.routing.service.model_types import (
     BatchInputModel_ContainerType,
 )
-from sqlalchemy.ext.asyncio import AsyncSession 
+from nicerouter.routing.service.service_util import check_entity_found
+from nicerouter.routing.service.types import (
+    EntiyType,
+    InputType,
+    OutputManyType,
+    OutputType,
+)
 
-class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
+
+class CrudService[
+    E: EntiyType,
+    Input: InputType,
+    Output: OutputType,
+    OutputMany: OutputManyType,
+](BaseCrudService[E, int]):
     def __init__(
-        self, repository: CrudRepository[T], dto_mapper: EntityDtoMapper[DTO, T]
+        self,
+        repository: CrudRepository[E],
+        entity_mapper: ServiceEntityMapper[E, Input, Output, OutputMany],
     ) -> None:
         self.repository = repository
-        self.dto_mapper = dto_mapper
+        self.entity_mapper: ServiceEntityMapper[E, Input, Output, OutputMany] = (
+            entity_mapper
+        )
 
-    async def get_by_id(self, session: AsyncSession, id: int) -> T | None:
+    async def get_by_id(self, session: AsyncSession, id: int) -> E | None:
         return await self.repository.get_by_id(session, id)
 
     async def get_by_id_with_options(
         self,
         session: AsyncSession,
         id: int,
-        response_model: type[DTO],
+        mask_class: type[BaseModel],
         exclude_fields: list[str],
         max_depth: int,
-    ) -> T | None:
-        return await self.repository.get_by_id_with_options(
+    ) -> E | None:
+        entity = await self.repository.get_by_id_with_options(
             session=session,
             id=id,
-            response_model=response_model, # type: ignore
+            mask_class=mask_class,  # type: ignore
             exclude_fields=exclude_fields,
             id_field="id",
             max_depth=max_depth,
         )
 
-    async def save(self, session: AsyncSession, entity: T) -> T:
+        return entity
+
+    async def save(self, session: AsyncSession, entity: E) -> E:
         entity = await self.repository.save(session, entity)
         await session.commit()
         await session.refresh(entity)
         return entity
 
-    async def create(self, session: AsyncSession, dto: DTO) -> T:
-        entity = self.dto_mapper.dto2entity(dto)
+    async def create(self, session: AsyncSession, dto: Input) -> E:
+        entity = self.entity_mapper.input2entity(dto)
         entity = await self.save(session=session, entity=entity)
         return entity
 
-    async def create_multi(self, session: AsyncSession, dto_list: list[DTO]) -> list[T]:
-        created_entities: list[T] = []
+    async def create_multi(
+        self, session: AsyncSession, dto_list: list[Input]
+    ) -> list[E]:
+        created_entities: list[E] = []
 
-        print("create_multi dto_list....", type(dto_list))
-        for d in dto_list:
-            print(type(d), d)
         for dto in dto_list:
-            entity = self.dto_mapper.dto2entity(dto)
+            entity = self.entity_mapper.input2entity(dto)
             entity = await self.repository.save(session, entity)
             created_entities.append(entity)
-        
+
         await session.commit()
 
         for entity in created_entities:
             await session.refresh(entity)
 
         return created_entities
-    
+
     async def delete_by_id(self, session: AsyncSession, id: int) -> bool:
 
         deleted = await self.repository.delete_by_id(session, id)
@@ -91,15 +112,15 @@ class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
 
     async def get_many(
         self, session: AsyncSession, params: GetManyParams
-    ) -> Iterable[T]:
-        
+    ) -> Iterable[E]:
+
         db_class = self.repository.model_cls
 
         options = build_query_options(
             db_class=db_class,
             exclude_fields=params.get("exclude_fields") or [],
             max_depth=params.get("max_depth") or 0,
-            response_model=params.get("response_model"),
+            mask_class=params.get("mask_class"),
         )
 
         result = await self.repository.get_many(
@@ -111,11 +132,10 @@ class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
         )
 
         return result
- 
-    
+
     async def partial_update(
         self, session: AsyncSession, id: int, updates: BaseModel
-    ) -> T:
+    ) -> E:
         entity = await self.get_by_id(session, id)
         entity = check_entity_found(entity)
 
@@ -129,10 +149,11 @@ class CrudService[T: DeclarativeBase, DTO: BaseModel](BaseCrudService[T, int]):
     async def partial_update_multi(
         self,
         session: AsyncSession,
-        update_list: BatchInputModel_ContainerType[int, BaseModel],
+        # update_list: BatchInputModel_ContainerType[int, Input],
+        update_list: BatchInputModel_ContainerType[int, Any],
     ):
 
-        updated_entities: Sequence[T] = []
+        updated_entities: Sequence[E] = []
         for update_item in update_list.items:
             updated_entity = await self.partial_update(
                 session=session, id=update_item.id, updates=update_item.data

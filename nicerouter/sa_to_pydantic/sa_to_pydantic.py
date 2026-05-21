@@ -124,9 +124,9 @@ def sa_to_pydantic(
         print(f"{model=} {model_name=}")
         print("-")
         pprint(REGISTRY)
-    assert (
-        created_entry is not None
-    ), f"Pydantic model not found in Registry for {model}"
+    assert created_entry is not None, (
+        f"Pydantic model not found in Registry for {model}"
+    )
     pydantic_model = created_entry.model
 
     # print("sa_to_pydantic :: created model ", model_name)
@@ -200,7 +200,6 @@ def _sa_to_pydantic(
     fields: dict[str, Any] = {}
 
     for name, annotation in name2annotation.items():
-
         if exclude_fields and name in exclude_fields:
             continue
 
@@ -208,13 +207,24 @@ def _sa_to_pydantic(
         if name.startswith("_"):
             continue
 
-        allow_optional_ = allow_optional and allow_optional(model, name)
-
-        field_kwargs = {}
-        if allow_optional_:
-            field_kwargs["default"] = None
+        field_kwargs: dict[str, Any] = {}
 
         is_relationship = name in relationships
+
+        if not is_relationship:
+            col = mapper.c.get(name)
+            if col is not None:
+                sa_default_value = col.default
+                if sa_default_value is not None and sa_default_value.is_scalar:
+                    if hasattr(sa_default_value, "arg"):
+                        default_arg = getattr(sa_default_value, "arg")
+                        field_kwargs["default"] = default_arg
+
+        allow_optional_ = allow_optional and allow_optional(model, name)
+
+        if allow_optional_:
+            if "default" not in field_kwargs:
+                field_kwargs["default"] = None
 
         inside_mapped_type = get_args(annotation)[0]
 
@@ -227,7 +237,8 @@ def _sa_to_pydantic(
                 union_childs = get_args(inside_mapped_type)
                 is_optional = type(None) in union_childs
                 if is_optional:
-                    field_kwargs["default"] = None
+                    if "default" not in field_kwargs:
+                        field_kwargs["default"] = None
 
             if allow_optional_:
                 inside_mapped_type = make_type_optional(inside_mapped_type)
@@ -264,7 +275,8 @@ def _sa_to_pydantic(
                 union_type = Union[tuple(union_childs_replaced_sa)]
                 is_optional = type(None) in union_childs
                 if is_optional:
-                    field_kwargs["default"] = None
+                    if "default" not in field_kwargs:
+                        field_kwargs["default"] = None
                 fields[name] = (
                     union_type,
                     Field(**field_kwargs),

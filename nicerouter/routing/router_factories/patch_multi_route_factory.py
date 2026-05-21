@@ -1,45 +1,60 @@
 from collections.abc import AsyncGenerator, Awaitable, Callable
+from typing import Any, Sequence
+
 from fastapi import Depends
 from fastapi.routing import APIRoute
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from nicerouter.routing.types import NiceAPIRoute
+
 from nicerouter.routing.routes_service import tags_from_prefix
-from sqlalchemy.orm import DeclarativeBase
-from typing import Any, Sequence
 from nicerouter.routing.service.crud_service import CrudService
 from nicerouter.routing.service.model_types import (
     BatchInputModel_ContainerType,
 )
+from nicerouter.routing.service.types import (
+    EntiyType,
+    InputType,
+    OutputType,
+)
+from nicerouter.routing.types import NiceAPIRoute
 
-type BatchInputModelAny = BatchInputModel_ContainerType[int, Any]
+# type BatchInputModelAny = BatchInputModel_ContainerType[int, Any]
 
 
-def create_patch_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
+def create_patch_multi_route[
+    Entiy: EntiyType,
+    Input: InputType,
+    Output: OutputType,
+    ResponseType,
+](
     *,
-    input_model: type[BaseModel],
-    response_model: T_DTO,
+    response_model: ResponseType = None,
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
-    service: CrudService[T_DB, T_DTO],
+    service: CrudService[
+        Entiy,
+        Input,
+        Output,
+        Any,
+    ],
     prefix: str,
     preprocessor_input: (
-        Callable[[BatchInputModelAny, AsyncSession], Awaitable[BatchInputModelAny]]
+        Callable[
+            [BatchInputModel_ContainerType[int, Input], AsyncSession],
+            Awaitable[BatchInputModel_ContainerType[int, Input]],
+        ]
         | None
     ) = None,
     postprocessor_output: (
-        Callable[[Sequence[T_DB], AsyncSession], Awaitable[Sequence[T_DB]]] | None
+        Callable[[Sequence[Entiy], AsyncSession], Awaitable[ResponseType]] | None
     ) = None,
+    **route_kwargs: Any,
 ) -> NiceAPIRoute:
 
-    class BatchInputModel(BatchInputModel_ContainerType[int, input_model]):
-        pass
-
     async def endpoint(
-        payload: BatchInputModel,
+        payload: BatchInputModel_ContainerType[int, Input],
         db: AsyncSession = Depends(get_db_session),
     ):
         if preprocessor_input:
-            payload = await preprocessor_input(payload, db)  # type: ignore
+            payload = await preprocessor_input(payload, db)
 
         updated_entities = await service.partial_update_multi(
             session=db, update_list=payload
@@ -52,11 +67,13 @@ def create_patch_multi_route[T_DB: DeclarativeBase, T_DTO: BaseModel](
 
     route = NiceAPIRoute(
         route=APIRoute(
-        path=f"{prefix}/multi",
-        methods=["PATCH"],
-        tags=tags_from_prefix(prefix),  # type: ignore
-        response_model=response_model,
-        endpoint=endpoint,),
-        service=service
+            path=f"{prefix}/multi",
+            methods=["PATCH"],
+            tags=tags_from_prefix(prefix),  # type: ignore
+            response_model=response_model,
+            endpoint=endpoint,
+            **route_kwargs,
+        ),
+        service=service,
     )
     return route
