@@ -31,8 +31,9 @@ def build_router_config(
     db_class: type[DeclarativeBase],
     normalizer: ObjectNormalizer | None = None,
     out_schema_optional_fields: bool = True,
+    module_name: str | None = None,
 ):
-    if not issubclass(db_class, DeclarativeBase):
+    if not issubclass(db_class, DeclarativeBase): # type: ignore
         raise ValueError(f"{db_class=} needs to inherit from sqlalchemy DeclarativeBase.")
 
     GoModelSchemaIn = generate_model_schema_in(db_class)
@@ -41,7 +42,7 @@ def build_router_config(
     GoModelSchemaUpdate = GoModelSchemaIn
 
     if out_schema_optional_fields: 
-        GoModelSchemaOut = make_pydantic_model_optional(GoModelSchemaOut)
+        GoModelSchemaOut = make_pydantic_model_optional(GoModelSchemaOut, module_name=module_name)
 
     return CreateRouterConfig(
         db_class=db_class,

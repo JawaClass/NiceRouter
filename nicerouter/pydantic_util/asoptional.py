@@ -8,25 +8,6 @@ from pydantic.fields import FieldInfo
 
 from nicerouter.type_utils import extract_most_inner_type
 
-# class Tire(BaseModel):
-#     id: int
-#     brand: str
-#     dim: float
-
-
-# class Person(BaseModel):
-#     id: int
-#     name: str
-
-
-# class Car(BaseModel):
-#     id: int
-#     name: str
-#     tires: list[Tire]
-#     owner: Person
-#     strings: list[str]
-#     optional_int: int | None
-
 
 def is_a_pydantic(type_: type[Any]):
     # try:
@@ -78,7 +59,11 @@ def new_field_info_as_optional(field_original: FieldInfo):
 
 
 @cache
-def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
+def make_pydantic_model_optional(model: type[BaseModel], module_name: str | None = None) -> type[BaseModel]:
+
+    if module_name is None:
+        module_name = "optional"
+    
     field_definitions: dict[str, tuple[Any, FieldInfo]] = {}
 
     for field_name, field_info in model.model_fields.items():
@@ -87,7 +72,7 @@ def make_pydantic_model_optional(model: type[BaseModel]) -> type[BaseModel]:
 
     name = f"{model.__name__}"
     new_model: type[BaseModel] = create_model(
-        name, __module__="", **field_definitions, __config__=model.model_config.copy()
+        name, __module__=module_name, **field_definitions, __config__=model.model_config.copy()
     )  # type:ignore
 
     return new_model
