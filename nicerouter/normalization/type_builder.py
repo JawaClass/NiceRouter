@@ -7,9 +7,13 @@ from pydantic import BaseModel, Field, create_model
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 from nicerouter.type_utils import extract_most_inner_type
 
+def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
+    # cache on the positional arg only: `f(m)` and `f(model_class=m)` are different @cache keys
+    # and would create two distinct classes with the same name (-> module-prefixed schema names)
+    return _normalize_type(model_class)
 
 @cache
-def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
+def _normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     model_fields = model_class.model_fields
 
     ref_fields = {
@@ -56,9 +60,14 @@ def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     )
     return NewModel
 
+def build_normalized_store_type(model_class: type[BaseModel]) -> type[BaseModel]:
+    """
+    Build a normalized store type for a given Pydantic model class.
+    """
+    return _build_normalized_store_type_cached(model_class)
 
 @cache
-def build_normalized_store_type(
+def _build_normalized_store_type_cached(
     model_class: type[BaseModel],
 ) -> type[BaseModel]:
     """

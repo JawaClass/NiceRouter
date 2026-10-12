@@ -57,12 +57,13 @@ def new_field_info_as_optional(field_original: FieldInfo):
 
     return field
 
+def make_pydantic_model_optional(model: type[BaseModel], module_name: str | None = None) -> type[BaseModel]:
+    # resolve the default BEFORE the cached call: `f(m)` and `f(m, module_name=None)` are different cache keys
+    # and would otherwise create two distinct classes with the same name (-> module-prefixed schema names)
+    return _make_pydantic_model_optional(model, module_name or "optional")
 
 @cache
-def make_pydantic_model_optional(model: type[BaseModel], module_name: str | None = None) -> type[BaseModel]:
-
-    if module_name is None:
-        module_name = "optional"
+def _make_pydantic_model_optional(model: type[BaseModel], module_name: str) -> type[BaseModel]:
     
     field_definitions: dict[str, tuple[Any, FieldInfo]] = {}
 
