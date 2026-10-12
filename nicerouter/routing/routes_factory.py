@@ -66,7 +66,7 @@ def create_get_all_route(
             ),
         ] = 3,
     ):
-      
+
         rows = await routes_service.get_all(
             db_class=db_class,
             response_model=response_model,
@@ -87,7 +87,7 @@ def create_get_all_route(
 
             store = build_normalized_store_object(
                 normalized_response_type=normalized_response_type,
-                items=rows,  # type:ignore
+                items=rows,  # type: ignore
                 response_model=response_model,
                 normalizer=normalizer,
             )
@@ -112,7 +112,7 @@ def create_get_all_route(
     return APIRoute(
         path=prefix,
         methods=["GET"],
-        tags=tags,  # type:ignore
+        tags=tags,  # type: ignore
         response_model=response_model_union,  # type: ignore
         endpoint=endpoint,
     )
@@ -185,7 +185,7 @@ def create_get_by_id_route(
     return APIRoute(
         path=f"{prefix}/{{id}}",
         methods=["GET"],
-        tags=tags,  # type:ignore
+        tags=tags,  # type: ignore
         response_model=response_model_union,
         endpoint=endpoint,
     )
@@ -206,7 +206,7 @@ def create_post_route(
     tags = routes_service.tags_from_prefix(prefix)
 
     async def endpoint(
-        payload: input_model,  # type:ignore
+        payload: input_model,  # type: ignore
         response_type: Annotated[
             ResponseType,
             Query(
@@ -250,7 +250,7 @@ def create_post_route(
     return APIRoute(
         path=f"{prefix}",
         methods=["POST"],
-        tags=tags,  # type:ignore
+        tags=tags,  # type: ignore
         response_model=response_model_union,
         endpoint=endpoint,
     )
@@ -268,7 +268,7 @@ def create_patch_route(
     ) = None,
 ) -> APIRoute:
     async def endpoint(
-        id: int, payload: input_model, db: AsyncSession = Depends(get_db_session) # type: ignore
+        id: int, payload: input_model, db: AsyncSession = Depends(get_db_session)  # type: ignore
     ):  # type: ignore  # noqa: A002
         if preprocessor_input:
             payload = await preprocessor_input(payload, db)
@@ -282,7 +282,7 @@ def create_patch_route(
 
             for key, value in payload.model_dump(exclude_unset=True).items():  # type: ignore
                 setattr(instance, key, value)
- 
+
         await db.refresh(instance)
 
         return instance
@@ -290,7 +290,7 @@ def create_patch_route(
     return APIRoute(
         path=f"{prefix}/{{id}}",
         methods=["PATCH"],
-        tags=tags_from_prefix(prefix),  # type:ignore
+        tags=tags_from_prefix(prefix),  # type: ignore
         response_model=response_model,
         endpoint=endpoint,
     )
@@ -304,11 +304,18 @@ def create_batch_patch_route_varied(
     get_db_session: Callable[[], AsyncGenerator[AsyncSession]],
     prefix: str,
 ) -> APIRoute:
+
+    name = db_class.__name__
+
     class BatchItem(BaseModel):
+        __qualname__ = f"{name}BatchItem"
+        __module__ = "nicerouter.batch"
         id: int
-        data: input_model  # type:ignore
+        data: input_model  # type: ignore
 
     class BatchInputModel(BaseModel):
+        __qualname__ = f"{name}BatchInputModel"
+        __module__ = "nicerouter.batch"
         items: list[BatchItem]
 
     async def endpoint(
@@ -334,7 +341,7 @@ def create_batch_patch_route_varied(
     return APIRoute(
         path=f"{prefix}/batch",
         methods=["PATCH"],
-        tags=tags_from_prefix(prefix),  # type:ignore
+        tags=tags_from_prefix(prefix),  # type: ignore
         response_model=list[response_model] if response_model else None,
         endpoint=endpoint,
     )
@@ -357,15 +364,13 @@ def create_delete_route(
         )
         async with routes_service.commit_db_ops(db=db):
             await db.delete(instance)
-              
-        return {"detail": {
-            "Deleted": id
-        }}
+
+        return {"detail": {"Deleted": id}}
 
     return APIRoute(
         path=f"{prefix}/{{id}}",
         methods=["DELETE"],
-        tags=tags_from_prefix(prefix),  # type:ignore
+        tags=tags_from_prefix(prefix),  # type: ignore
         response_model=dict,
         endpoint=endpoint,
     )
@@ -386,7 +391,7 @@ def create_delete_multi_route(
             missing_ids = set(id_list) - {x.id for x in found}
             raise HTTPException(status_code=404, detail=f"Missing IDs: {missing_ids}")
 
-        async with routes_service.commit_db_ops(db=db): 
+        async with routes_service.commit_db_ops(db=db):
             for item in found:
                 await db.delete(item)
 
@@ -396,7 +401,7 @@ def create_delete_multi_route(
     return APIRoute(
         path=f"{prefix}",
         methods=["DELETE"],
-        tags=tags_from_prefix(prefix),  # type:ignore
+        tags=tags_from_prefix(prefix),  # type: ignore
         response_model=dict,
         endpoint=endpoint,
     )
