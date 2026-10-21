@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ def build_normalized_store_object[E](
     *,
     normalized_response_type: type[BaseModel],
     response_model: type[BaseModel],
-    items: list[type[E]],
+    items: Sequence[E],
     normalizer: ObjectNormalizer | None = None,
 ):
     normalizer = normalizer or ObjectNormalizer()

@@ -1,6 +1,6 @@
+import sqlalchemy as sa
 from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
-import sqlalchemy as sa
 
 from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
 
@@ -36,7 +36,7 @@ def generate_model_schema_in(
         exclude_fields=exclude_fields,
         name_generator=lambda name: f"{name}__In",
         base_model=base_model,
-        circular_depency_strategy="discard"
+        circular_depency_strategy="discard",
     )
 
 
@@ -54,5 +54,5 @@ def generate_model_schema_update(
         exclude_fields=exclude_fields,
         name_generator=lambda name: f"{name}__Update",
         base_model=base_model,
-        circular_depency_strategy="discard"
+        circular_depency_strategy="discard",
     )

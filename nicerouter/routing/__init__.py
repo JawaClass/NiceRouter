@@ -1,10 +1,13 @@
-from typing import Any, AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
+
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+
 from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.pydantic_util.asoptional import make_pydantic_model_optional
-from nicerouter.routing.config_models import (
+from nicerouter.routing.models.config_models import (
     CreateRouteConfig,
     CreateRouterConfig,
     DeleteRouteConfig,
@@ -12,11 +15,11 @@ from nicerouter.routing.config_models import (
     GetByIdConfig,
     PatchRouteConfig,
 )
-from nicerouter.routing.model_generator import (
+from nicerouter.routing.models.model_generator import (
     generate_model_schema_in,
     generate_model_schema_out,
 )
-from nicerouter.routing.routes_factory import (
+from nicerouter.routing.routes.routes_factory import (
     create_batch_patch_route_varied,
     create_delete_multi_route,
     create_delete_route,
@@ -33,16 +36,20 @@ def build_router_config(
     out_schema_optional_fields: bool = True,
     module_name: str | None = None,
 ):
-    if not issubclass(db_class, DeclarativeBase): # type: ignore
-        raise ValueError(f"{db_class=} needs to inherit from sqlalchemy DeclarativeBase.")
+    if not issubclass(db_class, DeclarativeBase):
+        raise TypeError(
+            f"{db_class=} needs to inherit from sqlalchemy DeclarativeBase."
+        )
 
     GoModelSchemaIn = generate_model_schema_in(db_class)
     GoModelSchemaOut = generate_model_schema_out(db_class)
     # GoModelSchemaUpdate = generate_model_schema_update(db_class)
     GoModelSchemaUpdate = GoModelSchemaIn
 
-    if out_schema_optional_fields: 
-        GoModelSchemaOut = make_pydantic_model_optional(GoModelSchemaOut, module_name=module_name)
+    if out_schema_optional_fields:
+        GoModelSchemaOut = make_pydantic_model_optional(
+            GoModelSchemaOut, module_name=module_name
+        )
 
     return CreateRouterConfig(
         db_class=db_class,
@@ -100,7 +107,8 @@ def create_router(
                 get_db_session=get_db_session,
                 prefix=prefix,
                 normalizer=config.create_route.normalizer,
-                preprocessor_input=config.create_route.preprocessor_input,
+                preprocessor=config.create_route.preprocessor,
+                postprocessor=config.create_route.postprocessor,
             ),
         )
 
@@ -112,6 +120,8 @@ def create_router(
                 response_model=config.patch_route.response_model,
                 get_db_session=get_db_session,
                 prefix=prefix,
+                preprocessor=config.patch_route.preprocessor,
+                postprocessor=config.patch_route.postprocessor,
             )
         )
         router.routes.append(
@@ -121,7 +131,8 @@ def create_router(
                 response_model=config.patch_route.response_model,
                 get_db_session=get_db_session,
                 prefix=prefix,
-                preprocessor_input=config.patch_route.preprocessor_input,
+                preprocessor=config.patch_route.preprocessor,
+                postprocessor=config.patch_route.postprocessor,
             ),
         )
 
@@ -133,6 +144,8 @@ def create_router(
                 response_model=config.get_all_route.response_model,
                 prefix=prefix,
                 normalizer=config.get_all_route.normalizer,
+                preprocessor=config.get_all_route.preprocessor,
+                postprocessor=config.get_all_route.postprocessor,
             ),
         )
 
@@ -142,6 +155,8 @@ def create_router(
                 db_class=db_class,
                 get_db_session=get_db_session,
                 prefix=prefix,
+                preprocessor=config.delete_route.preprocessor,
+                postprocessor=config.delete_route.postprocessor,
             ),
         )
 
@@ -151,6 +166,8 @@ def create_router(
                 db_class=db_class,
                 get_db_session=get_db_session,
                 prefix=prefix,
+                preprocessor=config.delete_multi_route.preprocessor,
+                postprocessor=config.delete_multi_route.postprocessor,
             ),
         )
 
@@ -163,6 +180,8 @@ def create_router(
                 query=config.get_by_id_route.query,
                 normalizer=config.get_by_id_route.normalizer,
                 prefix=prefix,
+                preprocessor=config.get_by_id_route.preprocessor,
+                postprocessor=config.get_by_id_route.postprocessor,
             ),
         )
 

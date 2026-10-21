@@ -21,8 +21,13 @@ def is_a_pydantic(type_: type[Any]):
 def new_field_info(field_original: FieldInfo):
     f_dict = field_original.asdict()
 
+    annotation = field_original.annotation
+
+    if annotation is None:
+        annotation = object
+
     field = FieldInfo.from_annotation(
-        annotation=field_original.annotation,
+        annotation=annotation,
     )
 
     for attr, value in f_dict["attributes"].items():
@@ -47,24 +52,29 @@ def new_field_info_as_optional(field_original: FieldInfo):
         # list get default: []
         # others get default: None
         if get_origin(field.annotation) is list:
-            field.annotation = list[new_annotation]
+            field.annotation = list[new_annotation]  # ty: ignore[invalid-type-form]
             field.default = []
         else:
-            field.annotation = new_annotation | None  # type: ignore
+            field.annotation = new_annotation | None
             field.default = None
 
         return field
 
     return field
 
-def make_pydantic_model_optional(model: type[BaseModel], module_name: str | None = None) -> type[BaseModel]:
+
+def make_pydantic_model_optional(
+    model: type[BaseModel], module_name: str | None = None
+) -> type[BaseModel]:
     # resolve the default BEFORE the cached call: `f(m)` and `f(m, module_name=None)` are different cache keys
     # and would otherwise create two distinct classes with the same name (-> module-prefixed schema names)
     return _make_pydantic_model_optional(model, module_name or "optional")
 
+
 @cache
-def _make_pydantic_model_optional(model: type[BaseModel], module_name: str) -> type[BaseModel]:
-    
+def _make_pydantic_model_optional(
+    model: type[BaseModel], module_name: str
+) -> type[BaseModel]:
     field_definitions: dict[str, tuple[Any, FieldInfo]] = {}
 
     for field_name, field_info in model.model_fields.items():
@@ -73,7 +83,10 @@ def _make_pydantic_model_optional(model: type[BaseModel], module_name: str) -> t
 
     name = f"{model.__name__}"
     new_model: type[BaseModel] = create_model(
-        name, __module__=module_name, **field_definitions, __config__=model.model_config.copy()
+        name,
+        __module__=module_name,
+        **field_definitions,
+        __config__=model.model_config.copy(),
     )  # type:ignore
 
     return new_model

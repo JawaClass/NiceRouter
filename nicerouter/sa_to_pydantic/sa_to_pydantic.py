@@ -124,9 +124,9 @@ def sa_to_pydantic(
         print(f"{model=} {model_name=}")
         print("-")
         pprint(REGISTRY)
-    assert (
-        created_entry is not None
-    ), f"Pydantic model not found in Registry for {model}"
+    assert created_entry is not None, (
+        f"Pydantic model not found in Registry for {model}"
+    )
     pydantic_model = created_entry.model
 
     # print("sa_to_pydantic :: created model ", model_name)
@@ -282,7 +282,7 @@ def _sa_to_pydantic(
                     Field(**field_kwargs),
                 )
             elif inside_mapped_type_origin is list:  # list ref field
-                fields[name] = (list[annotation_type], Field(**field_kwargs))
+                fields[name] = (list[annotation_type], Field(**field_kwargs))  # ty: ignore[invalid-type-form]
             elif inside_mapped_type_origin is None:  # singular ref field
                 fields[name] = (annotation_type, Field(**field_kwargs))
             else:
@@ -315,6 +315,7 @@ def _sa_to_pydantic(
     _stack.remove(model_name)
 
     return NewModel
+
 
 cached = {}
 

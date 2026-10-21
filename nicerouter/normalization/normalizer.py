@@ -6,8 +6,12 @@ from pydantic import BaseModel
 
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 from nicerouter.type_utils import extract_most_inner_type
+import logging
 
-type IdResolver = Callable[[BaseModel, str], str]
+LOGGER = logging.getLogger(__name__)
+
+
+type IdResolver = Callable[[Any, str], str]
 
 
 class ObjectNormalizer:
@@ -51,13 +55,13 @@ class ObjectNormalizer:
         reference_fields = {
             field_name: field_info
             for field_name, field_info in model_fields.items()
-            if self._is_reference_type(field_info.annotation)  # type: ignore
+            if self._is_reference_type(field_info.annotation)
         }
 
         list_fields = {
             field_name: field_info
             for field_name, field_info in model_fields.items()
-            if self._is_list_reference_type(field_info.annotation)  # type: ignore
+            if self._is_list_reference_type(field_info.annotation)
         }
 
         # 3. Identify Standard Fields (Scalars) to copy directly
@@ -82,7 +86,10 @@ class ObjectNormalizer:
         id_name: str = "id",
         ref2idfield_resolver: IdResolver | None = None,
     ) -> dict[str, Any]:
-        ref2idfield_resolver = ref2idfield_resolver or self.ref2idfield_resolver
+        ref2idfield_resolver: IdResolver | None = (
+            ref2idfield_resolver or self.ref2idfield_resolver
+        )
+
         # get or create slice for this type
         slicename = obj_model.__name__
         store_slice = self.store[slicename]
@@ -99,7 +106,7 @@ class ObjectNormalizer:
         # normalized_obj = obj.model_dump(mode="python", exclude_none=False)
         normalized_obj = {k: getattr(obj, k) for k in standard_fields}
 
-        field_names_with_detached_error: set[str] = set()
+        # field_names_with_detached_error: set[str] = set()
 
         # normalize ref children
         for field_name in reference_fields:
@@ -123,12 +130,11 @@ class ObjectNormalizer:
             # otherwise, try resolve it
             id_field = f"{field_name}_id"
             if id_field not in normalized_obj:
-                if (
-                    not ref2idfield_resolver
-                    and field_name not in field_names_with_detached_error
-                ):
-                    print(":::::::::::", field_name, field_names_with_detached_error)
+                # needs_resolver = field_name not in field_names_with_detached_error
+                if not ref2idfield_resolver:
+                    # print(":::::::::::", field_name, field_names_with_detached_error)
                     msg = f"Object {type(obj)}(...) doesnt have attribute {id_field} from reference field {field_name}. Add resolver argument."
+                    LOGGER.error(msg)
                     raise ValueError(msg)
                 id_field = ref2idfield_resolver(obj, field_name)
 

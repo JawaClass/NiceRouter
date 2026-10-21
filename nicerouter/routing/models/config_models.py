@@ -1,11 +1,10 @@
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from nicerouter.normalization.normalizer import ObjectNormalizer
+from nicerouter.routing.routes.routes_factory import PostProcessor, PreProcessor
 
 
 class GetByIdConfig(BaseModel):
@@ -13,8 +12,8 @@ class GetByIdConfig(BaseModel):
     response_model: type[BaseModel]
     normalizer: ObjectNormalizer | None = None
     query: sa.Select | None = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
 
 class GetAllConfig(BaseModel):
@@ -22,33 +21,36 @@ class GetAllConfig(BaseModel):
     response_model: type[BaseModel]
     normalizer: ObjectNormalizer | None = None
     query: sa.Select | None = None
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-type PreProcessorCallable[INPUT_MODEL] = Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]]
 
 class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     input_model: type[INPUT_MODEL]
     response_model: type[BaseModel]
     normalizer: ObjectNormalizer | None = None
-    preprocessor_input: Callable[[INPUT_MODEL, AsyncSession], Awaitable[INPUT_MODEL]] | None = None
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
 
 class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     input_model: type[BaseModel]
     response_model: type[BaseModel] | None = None
-    preprocessor_input: PreProcessorCallable[INPUT_MODEL] | None = None
-
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
 
 class DeleteRouteConfig(BaseModel):
-    pass
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
 
 class DeleteMultiRouteConfig(BaseModel):
-    pass
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    preprocessor: PreProcessor | None = None
+    postprocessor: PostProcessor | None = None
 
 
 class CreateRouterConfig(BaseModel):

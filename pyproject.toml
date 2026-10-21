@@ -10,4 +10,6 @@ dependencies = [
     "pydantic>=2.12.5",
     "pytest>=8.4.2",
     "sqlalchemy>=2.0.43",
+    "ty==0.0.85",
+    "ruff==0.12.5",
 ]

@@ -26,7 +26,7 @@ def test():
         return "owner_id_xxx"
 
     normalizer = ObjectNormalizer()
-    o = normalizer.normalize(
+    _ = normalizer.normalize(
         obj=Car(
             id=1,
             name="Rudoplh",

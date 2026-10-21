@@ -1,9 +1,10 @@
 from fastapi import HTTPException
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.schema import Column
+from sqlalchemy.orm import DeclarativeBase
 
 
-def is_column_field(db_class: object, field: str):
+def is_column_field(db_class: type[DeclarativeBase], field: str):
     attr = getattr(db_class, field)
     if not attr:
         return False
@@ -11,7 +12,7 @@ def is_column_field(db_class: object, field: str):
     return isinstance(attr, InstrumentedAttribute)
 
 
-def build_filter_by(filter_by: str, db_class: object):
+def build_filter_by(filter_by: str, db_class: type[DeclarativeBase]):
     filter_expresssions = filter_by.split(",")
     filters = []
     for filter_expr in filter_expresssions:
@@ -48,7 +49,7 @@ def build_filter_by(filter_by: str, db_class: object):
     return filters
 
 
-def build_sort_by(sort_by: str, db_class: object):
+def build_sort_by(sort_by: str, db_class: type[DeclarativeBase]):
     order_columns = []
     fields = sort_by.split(",")
     for field in fields:
@@ -63,7 +64,7 @@ def build_sort_by(sort_by: str, db_class: object):
     return order_columns
 
 
-def get_db_class_fields(db_class: object):
+def get_db_class_fields(db_class: type[DeclarativeBase]):
     valid_attrs: dict[str, InstrumentedAttribute] = {
         attr: getattr(db_class, attr)
         for attr in dir(db_class)
@@ -72,7 +73,7 @@ def get_db_class_fields(db_class: object):
     return valid_attrs
 
 
-def build_select_fields(db_class: object, exclude_fields_set: set[str]):
+def build_select_fields(db_class: type[DeclarativeBase], exclude_fields_set: set[str]):
     db_class_fields = get_db_class_fields(db_class)
     load_only_fields = [
         field

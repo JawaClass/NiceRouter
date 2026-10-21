@@ -46,7 +46,6 @@ class User(Base):
 
 
 def test():
-
     model = sa_to_pydantic(model=A, name_generator=lambda x: x)
 
     print("pydantic_model", model)

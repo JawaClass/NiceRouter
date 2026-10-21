@@ -4,14 +4,14 @@ from typing import Any, Iterable
 import sqlalchemy as sa
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from sqlalchemy.orm import Load, selectinload
+from sqlalchemy.orm import Load, selectinload, DeclarativeBase
 
-from nicerouter.routing.param_builders import build_select_fields
+from nicerouter.routing.service.param_builders import build_select_fields
 from nicerouter.type_utils import extract_most_inner_type
 
 
 def select_relationships_deep(
-    db_class: type[Any],
+    db_class: type[DeclarativeBase],
     mask_class: type[BaseModel],
     sa_load_method: Callable[[Any], Load] = selectinload,  # type:ignore
     max_depth: int | None = 5,

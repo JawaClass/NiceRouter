@@ -1,11 +1,9 @@
 from __future__ import annotations
 
+
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from nicerouter.sa_to_pydantic.sa_to_pydantic import sa_to_pydantic
-from nicerouter.sa_to_pydantic.sa_to_pydantic import REGISTRY
-from pprint import pprint
 
 class Base(DeclarativeBase):
     pass
@@ -66,7 +64,7 @@ class C(Base):
 #     c_mode_fields = (
 #         A_Out.model_fields["b"].annotation.model_fields["c"].annotation.model_fields
 #     )
- 
+
 #     pprint(c_mode_fields)
 #     assert "a" in c_mode_fields
 

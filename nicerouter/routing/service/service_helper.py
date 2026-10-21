@@ -1,27 +1,31 @@
-from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Any, Literal, Sequence, cast
 
 import sqlalchemy as sa
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, load_only
 from sqlalchemy.orm.collections import InstrumentedList
-from sqlalchemy.exc import IntegrityError 
-from nicerouter.routing.param_builders import (
+
+from nicerouter.routing.models.models import HasIdBase
+from nicerouter.routing.service.param_builders import (
     build_exclude_fields_set,
     build_filter_by,
     build_select_fields,
     build_sort_by,
 )
-from nicerouter.routing.sa_select_in_deep import select_relationships_deep
+from nicerouter.routing.service.sa_select_in_deep import select_relationships_deep
 
 OnRecursion = Literal["raise", "ignore"]
 
 
+type SaDict = dict[str, Any]
+type Sa2DictResult = SaDict | list[SaDict]
+
+
 def sa_to_dict(
     obj, *, depth=None, path: dict | None = None, on_recursion: OnRecursion = "ignore"
-):
+) -> Sa2DictResult | None:
     """
     Safely convert a SQLAlchemy DeclarativeBase object (or list of them)
     into plain Python dictionaries — avoiding circular references and
@@ -42,7 +46,7 @@ def sa_to_dict(
 
     if type_ in path:
         if on_recursion == "raise":
-            path = [k.__name__ for k in path.keys()] # type: ignore
+            path = [k.__name__ for k in path.keys()]  # type: ignore
             msg = f"Circular Recursion detected @ {depth=} :: {type_=} in {path=}"
             raise ValueError(msg)
         else:
@@ -73,29 +77,30 @@ def sa_to_dict(
 
     # Handle list-like relationships
     if isinstance(obj, InstrumentedList):
-        return [sa_to_dict(item, depth=depth + 1, path=path) for item in obj]
+        result = [sa_to_dict(item, depth=depth + 1, path=path) for item in obj]
+        return cast(Sa2DictResult, [item for item in result if item is not None])
 
     # # Return plain value (non-SQLAlchemy type)
     # visited[obj_id] = obj
     return obj
 
 
-async def scalar_or_throw_by_id(
+async def scalar_or_throw_by_id[E: HasIdBase](
     *,
     db: AsyncSession,
-    db_class: type[Any],
+    db_class: type[E],
     id: int,
-):
+) -> E:
     query = sa.select(db_class).where(db_class.id == id)
     return await scalar_or_throw(db=db, db_class=db_class, query=query)
 
 
-async def scalar_or_throw(
+async def scalar_or_throw[E: DeclarativeBase](
     *,
     db: AsyncSession,
-    db_class: type[Any],
+    db_class: type[E],
     query: sa.Select,
-):
+) -> E:
     result = await db.execute(query)
     instance = result.scalar()
     if not instance:
@@ -103,18 +108,18 @@ async def scalar_or_throw(
     return instance
 
 
-async def get_all[E](
+async def get_all[E: DeclarativeBase](
     db_class: type[E],
     response_model: type[BaseModel],
     db: AsyncSession,
-    limit: int,
-    offset: int,
     query: sa.Select | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
     sort_by: str | None = None,
     filter_by: str | None = None,
     exclude_fields: str | None = None,
     max_depth: int | None = None,
-):
+) -> Sequence[E]:
     options = []
     exclude_fields_set: set[str] = set()
 
@@ -158,7 +163,7 @@ async def get_all[E](
     return instances
 
 
-async def get_by_id[E](
+async def get_by_id[E: DeclarativeBase](
     id: int,
     db_class: type[E],
     response_model: type[BaseModel],
@@ -190,40 +195,3 @@ async def get_by_id[E](
     stmt = stmt.where(getattr(db_class, id_field) == id)
     item = await scalar_or_throw(db=db, db_class=db_class, query=stmt)
     return item
-
-
-def tags_from_prefix(prefix: str):
-    return [prefix.strip("/").split("/")[0]]
-
-
- 
-
-@asynccontextmanager
-async def commit_db_ops(db: AsyncSession):
-    try: 
-        yield
-        await db.commit()
-    except HTTPException:
-        # If it's already a FastAPI HTTPException (like 404), 
-        # just let it fly out to the client.
-        await db.rollback()
-        raise
-    except IntegrityError as e:
-        await db.rollback()
-        err_msg = str(e.orig).lower()
-        if "foreign key" in err_msg or "violates foreign key" in err_msg:
-            detail = "Action failed: This record is still referenced by other data."
-            status_code = status.HTTP_409_CONFLICT
-        elif "unique" in err_msg or "already exists" in err_msg:
-            detail = "Action failed: A record with this value already exists."
-            status_code = status.HTTP_400_BAD_REQUEST
-        else:
-            detail = "Database integrity violation."
-            status_code = status.HTTP_400_BAD_REQUEST
-        raise HTTPException(status_code=status_code, detail=detail)
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected database error occurred."
-        )

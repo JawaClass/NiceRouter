@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 
 from example.db import get_db, init_db
 from example.model import Panda, ToDoItem, UrgencyLevel, User
@@ -10,13 +9,14 @@ How to run:
 uv run -m fastapi run example/app.py
 """
 
+
 async def lifespan(app: FastAPI):
     await init_db()
 
     yield
 
 
-app = FastAPI(lifespan=lifespan)  # type: ignore
+app = FastAPI(lifespan=lifespan)
 
 user_router = create_router_for_db(db_class=User, prefix="/user", get_db_session=get_db)
 
@@ -35,7 +35,6 @@ urgency_router = create_router_for_db(
 app.include_router(urgency_router)
 
 
- 
-app.include_router(create_router_for_db(
-    db_class=Panda, prefix="/pandas", get_db_session=get_db
-))
+app.include_router(
+    create_router_for_db(db_class=Panda, prefix="/pandas", get_db_session=get_db)
+)

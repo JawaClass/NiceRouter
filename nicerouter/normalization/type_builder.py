@@ -1,5 +1,4 @@
 from functools import cache
-from pprint import pprint
 from typing import Any
 
 from pydantic import BaseModel, Field, create_model
@@ -7,10 +6,12 @@ from pydantic import BaseModel, Field, create_model
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 from nicerouter.type_utils import extract_most_inner_type
 
+
 def normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     # cache on the positional arg only: `f(m)` and `f(model_class=m)` are different @cache keys
     # and would create two distinct classes with the same name (-> module-prefixed schema names)
     return _normalize_type(model_class)
+
 
 @cache
 def _normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
@@ -19,13 +20,13 @@ def _normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     ref_fields = {
         field: field_info
         for field, field_info in model_fields.items()
-        if is_reference_type(field_info.annotation)  # type: ignore
+        if is_reference_type(field_info.annotation)
     }
 
     list_fields = {
         field: field_info
         for field, field_info in model_fields.items()
-        if is_list_reference_type(field_info.annotation)  # type: ignore
+        if is_list_reference_type(field_info.annotation)
     }
 
     primitive_fields = {
@@ -35,7 +36,7 @@ def _normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     }
 
     # fields as name 2 type
-    normalized_fields = {}
+    normalized_fields: dict[str, Any] = {}
 
     for field, field_info in primitive_fields.items():
         normalized_fields[field] = (field_info.annotation, field_info)
@@ -60,11 +61,13 @@ def _normalize_type(model_class: type[BaseModel]) -> type[BaseModel]:
     )
     return NewModel
 
-def build_normalized_store_type(model_class: type[BaseModel]) -> type[BaseModel]:
+
+def build_normalized_store_model(model_class: type[BaseModel]) -> type[BaseModel]:
     """
     Build a normalized store type for a given Pydantic model class.
     """
     return _build_normalized_store_type_cached(model_class)
+
 
 @cache
 def _build_normalized_store_type_cached(
@@ -73,12 +76,14 @@ def _build_normalized_store_type_cached(
     """
     Build a normalized store type for a given Pydantic model class.
     """
-    normalized_fields = _build_normalized_store_type(model_class=model_class)
+    normalized_fields: dict[str, Any] = _build_normalized_store_type(
+        model_class=model_class
+    )
 
     # Dynamically create a Pydantic model with these fields
     NormalizedModel = create_model(
         f"Normalized_Store_{model_class.__name__}",
-        **normalized_fields,  # type: ignore
+        **normalized_fields,
         __module__="normalized_store_types",
     )
     return NormalizedModel
@@ -95,11 +100,11 @@ def _build_normalized_store_type(
     # start with self
     normalized_type_ = normalize_type(model_class=model_class)
     name = model_class.__name__
-    normalized_fields[name] = (dict[int, normalized_type_], Field(default_factory=dict))
+    normalized_fields[name] = (dict[int, normalized_type_], Field(default_factory=dict))  # ty: ignore[invalid-type-form]
 
     model_fields = model_class.model_fields
     for field, field_info in model_fields.items():
-        inner_type = extract_most_inner_type(field_info.annotation)  # type: ignore
+        inner_type = extract_most_inner_type(field_info.annotation)
 
         if not is_reference_type(inner_type) and not is_list_reference_type(inner_type):
             continue
@@ -110,35 +115,12 @@ def _build_normalized_store_type(
             model_class=inner_type, normalized_fields=normalized_fields
         )
 
-        normalized_type_ = normalize_type(model_class=inner_type)  # type: ignore
+        normalized_type_ = normalize_type(model_class=inner_type)
         name = inner_type.__name__
 
         normalized_fields[name] = (
-            dict[int, normalized_type_],
+            dict[int, normalized_type_],  # ty: ignore[invalid-type-form]
             Field(default_factory=dict),
         )
 
     return normalized_fields
-
-
-if __name__ == "__main__":
-
-    class Customer(BaseModel):
-        id: int
-        name: str
-
-    class Car(BaseModel):
-        id: int
-        name: str
-        optional_value: str | None
-        owner: Customer | None
-        prev_owners: list[Customer]
-
-    t = normalize_type(model_class=Car)
-
-    print(t)
-    pprint(t.model_fields)
-
-    t = build_normalized_store_type(model_class=Car)
-    print(t)
-    pprint(t.model_fields)
