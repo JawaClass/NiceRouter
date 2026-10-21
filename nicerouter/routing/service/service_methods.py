@@ -1,6 +1,6 @@
 from typing import Sequence, Any
 import sqlalchemy as sa
-from fastapi import HTTPException
+from nicerouter.routing.exceptions import NotFoundError
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
@@ -208,7 +208,7 @@ async def delete_batch[E: HasIdBase](
 
     if len(found) != len(id_list):
         missing_ids = set(id_list) - {x.id for x in found}
-        raise HTTPException(status_code=404, detail=f"Missing IDs: {missing_ids}")
+        raise NotFoundError(f"Missing IDs: {missing_ids}")
 
     async with db_helper.commit_db_ops(db=db):
         for item in found:

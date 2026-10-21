@@ -1,7 +1,7 @@
 from typing import Any, Literal, Sequence, cast
 
 import sqlalchemy as sa
-from fastapi import HTTPException
+from nicerouter.routing.exceptions import NotFoundError
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, load_only
@@ -104,7 +104,7 @@ async def scalar_or_throw[E: DeclarativeBase](
     result = await db.execute(query)
     instance = result.scalar()
     if not instance:
-        raise HTTPException(status_code=404, detail=f"{db_class.__name__} not found")
+        raise NotFoundError(f"{db_class.__name__} not found")
     return instance
 
 

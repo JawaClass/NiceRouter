@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from nicerouter.routing.exceptions import InvalidQueryError
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.schema import Column
 from sqlalchemy.orm import DeclarativeBase
@@ -18,16 +18,13 @@ def build_filter_by(filter_by: str, db_class: type[DeclarativeBase]):
     for filter_expr in filter_expresssions:
         field, value = filter_expr.split("=")
         if not is_column_field(db_class, field):
-            raise HTTPException(
-                status_code=400, detail=f"Invalid filter field: {field}"
-            )
+            raise InvalidQueryError(f"Invalid filter field: {field}")
 
         col: Column = getattr(db_class.__table__.c, field)
 
         if not isinstance(col, Column):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid filter field: {field}. {type(col)} is not a column.",
+            raise InvalidQueryError(
+                f"Invalid filter field: {field}. {type(col)} is not a column.",
             )
 
         if str(value).lower() == "false":
@@ -39,9 +36,8 @@ def build_filter_by(filter_by: str, db_class: type[DeclarativeBase]):
                 py_type = col.type.python_type
                 value_casted = py_type(value)  # cast the string to correct Python type
             except (ValueError, TypeError) as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot cast value '{value}' to {py_type}: {e}",
+                raise InvalidQueryError(
+                    f"Cannot cast value '{value}' to {py_type}: {e}",
                 )
 
         filters.append(getattr(db_class, field) == value_casted)
@@ -58,7 +54,7 @@ def build_sort_by(sort_by: str, db_class: type[DeclarativeBase]):
             desc = True
             field = field[1:]
         if not is_column_field(db_class, field):
-            raise HTTPException(status_code=400, detail=f"Invalid sort field: {field}")
+            raise InvalidQueryError(f"Invalid sort field: {field}")
         col = getattr(db_class, field)
         order_columns.append(col.desc() if desc else col.asc())
     return order_columns
