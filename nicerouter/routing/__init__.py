@@ -109,6 +109,7 @@ def create_router(
                 normalizer=config.create_route.normalizer,
                 preprocessor=config.create_route.preprocessor,
                 postprocessor=config.create_route.postprocessor,
+                service_method=config.create_route.service_method,
             ),
         )
 
@@ -122,6 +123,7 @@ def create_router(
                 prefix=prefix,
                 preprocessor=config.patch_route.preprocessor,
                 postprocessor=config.patch_route.postprocessor,
+                service_method=config.patch_route.batch_service_method,
             )
         )
         router.routes.append(
@@ -133,6 +135,7 @@ def create_router(
                 prefix=prefix,
                 preprocessor=config.patch_route.preprocessor,
                 postprocessor=config.patch_route.postprocessor,
+                service_method=config.patch_route.service_method,
             ),
         )
 
@@ -146,6 +149,7 @@ def create_router(
                 normalizer=config.get_all_route.normalizer,
                 preprocessor=config.get_all_route.preprocessor,
                 postprocessor=config.get_all_route.postprocessor,
+                service_method=config.get_all_route.service_method,
             ),
         )
 
@@ -157,6 +161,7 @@ def create_router(
                 prefix=prefix,
                 preprocessor=config.delete_route.preprocessor,
                 postprocessor=config.delete_route.postprocessor,
+                service_method=config.delete_route.service_method,
             ),
         )
 
@@ -168,6 +173,7 @@ def create_router(
                 prefix=prefix,
                 preprocessor=config.delete_multi_route.preprocessor,
                 postprocessor=config.delete_multi_route.postprocessor,
+                service_method=config.delete_multi_route.service_method,
             ),
         )
 
@@ -182,6 +188,7 @@ def create_router(
                 prefix=prefix,
                 preprocessor=config.get_by_id_route.preprocessor,
                 postprocessor=config.get_by_id_route.postprocessor,
+                service_method=config.get_by_id_route.service_method,
             ),
         )
 

@@ -22,6 +22,7 @@ from nicerouter.routing.service.param_builders import get_db_class_fields
 
 type PreProcessor[E: BaseModel] = Callable[[E, AsyncSession], Awaitable[E]]
 type PostProcessor[E: object] = Callable[[E, AsyncSession], Awaitable[E]]
+type ServiceMethod = Callable[..., Awaitable[Any]]
 
 
 def create_get_all_route[E: DeclarativeBase](
@@ -34,6 +35,7 @@ def create_get_all_route[E: DeclarativeBase](
     normalizer: ObjectNormalizer | None = None,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     tags = tags_from_prefix(prefix)
     fields_lookup = get_db_class_fields(db_class=db_class)
@@ -78,7 +80,7 @@ def create_get_all_route[E: DeclarativeBase](
         if preprocessor:
             await preprocessor(request, db)
 
-        response = await service_methods.get_all(
+        response = await (service_method or service_methods.get_all)(
             db_class=db_class,
             response_model=response_model,
             response_type=response_type,
@@ -123,6 +125,7 @@ def create_get_by_id_route(
     normalizer: ObjectNormalizer | None = None,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     tags = tags_from_prefix(prefix)
     fields_lookup = get_db_class_fields(db_class=db_class)
@@ -153,7 +156,7 @@ def create_get_by_id_route(
         if preprocessor:
             await preprocessor(id, db)
 
-        response = await service_methods.get_by_id(
+        response = await (service_method or service_methods.get_by_id)(
             item_id=id,
             db_class=db_class,
             response_model=response_model,
@@ -193,6 +196,7 @@ def create_post_route[E: DeclarativeBase](
     normalizer: ObjectNormalizer | None = None,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     tags = tags_from_prefix(prefix)
 
@@ -210,7 +214,7 @@ def create_post_route[E: DeclarativeBase](
         if preprocessor:
             payload = await preprocessor(payload, db)
 
-        response = await service_methods.post(
+        response = await (service_method or service_methods.post)(
             db_class=db_class,
             response_model=response_model,
             normalized_response_model=normalized_response_type,
@@ -246,6 +250,7 @@ def create_patch_route[E: DeclarativeBase, I: BaseModel](
     prefix: str,
     preprocessor: PreProcessor[I] | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     async def endpoint(
         id: int,
@@ -255,7 +260,7 @@ def create_patch_route[E: DeclarativeBase, I: BaseModel](
         if preprocessor:
             payload = await preprocessor(payload, db)
 
-        updated_instance = await service_methods.patch(
+        updated_instance = await (service_method or service_methods.patch)(
             item_id=id, db=db, db_class=db_class, payload=payload
         )
 
@@ -282,6 +287,7 @@ def create_batch_patch_route_varied(
     prefix: str,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     name = db_class.__name__
 
@@ -294,7 +300,7 @@ def create_batch_patch_route_varied(
         if preprocessor:
             payload = await preprocessor(payload, db)
 
-        response = await service_methods.patch_batch(
+        response = await (service_method or service_methods.patch_batch)(
             db=db, db_class=db_class, payload=payload
         )
 
@@ -319,6 +325,7 @@ def create_delete_route(
     prefix: str,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     async def endpoint(
         id: int,
@@ -327,7 +334,9 @@ def create_delete_route(
         if preprocessor:
             await preprocessor(id, db)
 
-        result = await service_methods.delete(entity_id=id, db=db, db_class=db_class)
+        result = await (service_method or service_methods.delete)(
+            entity_id=id, db=db, db_class=db_class
+        )
 
         if postprocessor:
             await postprocessor(result, db)
@@ -350,12 +359,13 @@ def create_delete_multi_route(
     prefix: str,
     preprocessor: PreProcessor | None = None,
     postprocessor: PostProcessor | None = None,
+    service_method: ServiceMethod | None = None,
 ) -> APIRoute:
     async def endpoint(id_list: list[int], db: AsyncSession = Depends(get_db_session)):  # noqa: B008
         if preprocessor:
             await preprocessor(id_list, db)
 
-        response = await service_methods.delete_batch(
+        response = await (service_method or service_methods.delete_batch)(
             id_list=id_list, db=db, db_class=db_class
         )
 

@@ -4,7 +4,11 @@ import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict
 
 from nicerouter.normalization.normalizer import ObjectNormalizer
-from nicerouter.routing.routes.routes_factory import PostProcessor, PreProcessor
+from nicerouter.routing.routes.routes_factory import (
+    PostProcessor,
+    PreProcessor,
+    ServiceMethod,
+)
 
 
 class GetByIdConfig(BaseModel):
@@ -14,6 +18,7 @@ class GetByIdConfig(BaseModel):
     query: sa.Select | None = None
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
 
 
 class GetAllConfig(BaseModel):
@@ -23,6 +28,7 @@ class GetAllConfig(BaseModel):
     query: sa.Select | None = None
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
 
 
 class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
@@ -32,6 +38,7 @@ class CreateRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     normalizer: ObjectNormalizer | None = None
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
 
 
 class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
@@ -39,18 +46,22 @@ class PatchRouteConfig[INPUT_MODEL: BaseModel](BaseModel):
     response_model: type[BaseModel] | None = None
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
+    batch_service_method: ServiceMethod | None = None
 
 
 class DeleteRouteConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
 
 
 class DeleteMultiRouteConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     preprocessor: PreProcessor | None = None
     postprocessor: PostProcessor | None = None
+    service_method: ServiceMethod | None = None
 
 
 class CreateRouterConfig(BaseModel):
