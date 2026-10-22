@@ -11,15 +11,14 @@ from nicerouter.routing.models.models import (
     BatchInputModelProtocol,
     DeleteBatchEntityResponse,
     DeleteEntityResponse,
-    HasIdBase,
     ResponseType,
 )
 from nicerouter.routing.service import db_helper, service_helper
 from nicerouter.routing.service.sa_select_in_deep import select_relationships_deep
-from nicerouter.routing.service.service_helper import sa_to_dict
+from nicerouter.routing.service.service_helper import id_column, id_of, sa_to_dict
 
 
-async def post[E: HasIdBase](
+async def post[E: DeclarativeBase](
     db_class: type[E],
     response_model: type[BaseModel],
     normalized_response_model: type[BaseModel],
@@ -34,11 +33,11 @@ async def post[E: HasIdBase](
 
     await db.refresh(instance)
 
-    id = instance.id
+    id = id_of(instance)
     stmt = sa.select(db_class).options(
         *select_relationships_deep(db_class, response_model),
     )
-    stmt = stmt.where(db_class.id == id)
+    stmt = stmt.where(id_column(db_class) == id)
     item = await service_helper.scalar_or_throw(db=db, db_class=db_class, query=stmt)
 
     if response_type == ResponseType.Nested:
@@ -53,14 +52,14 @@ async def post[E: HasIdBase](
         )
 
 
-async def patch[E: HasIdBase](
+async def patch[E: DeclarativeBase](
     item_id: int, db: AsyncSession, db_class: type[E], payload: BaseModel
 ):
     async with db_helper.commit_db_ops(db=db):
         instance = await service_helper.scalar_or_throw(
             db=db,
             db_class=db_class,
-            query=sa.select(db_class).where(db_class.id == item_id),
+            query=sa.select(db_class).where(id_column(db_class) == item_id),
         )
 
         for key, value in payload.model_dump(exclude_unset=True).items():
@@ -70,7 +69,7 @@ async def patch[E: HasIdBase](
     return instance
 
 
-async def patch_batch[E: HasIdBase](
+async def patch_batch[E: DeclarativeBase](
     db: AsyncSession, db_class: type[E], payload: BatchInputModelProtocol
 ) -> list[E]:
     updated_instances: list[E] = []
@@ -91,7 +90,7 @@ async def patch_batch[E: HasIdBase](
     return updated_instances
 
 
-async def get_by_id[E: HasIdBase](
+async def get_by_id[E: DeclarativeBase](
     item_id: int,
     db: AsyncSession,
     db_class: type[E],
@@ -181,7 +180,7 @@ async def get_all[E: DeclarativeBase](
         return validated_rows
 
 
-async def delete[E: HasIdBase](
+async def delete[E: DeclarativeBase](
     entity_id: int,
     db: AsyncSession,
     db_class: type[E],
@@ -189,7 +188,7 @@ async def delete[E: HasIdBase](
     instance = await service_helper.scalar_or_throw(
         db=db,
         db_class=db_class,
-        query=sa.select(db_class).where(db_class.id == entity_id),
+        query=sa.select(db_class).where(id_column(db_class) == entity_id),
     )
     async with db_helper.commit_db_ops(db=db):
         await db.delete(instance)
@@ -197,17 +196,17 @@ async def delete[E: HasIdBase](
     return DeleteEntityResponse(deleted_id=entity_id)
 
 
-async def delete_batch[E: HasIdBase](
+async def delete_batch[E: DeclarativeBase](
     id_list: Sequence[int],
     db: AsyncSession,
     db_class: type[E],
 ) -> DeleteBatchEntityResponse:
-    stmt = sa.select(db_class).where(db_class.id.in_(id_list))
+    stmt = sa.select(db_class).where(id_column(db_class).in_(id_list))
     result = await db.execute(stmt)
     found = result.scalars().all()
 
     if len(found) != len(id_list):
-        missing_ids = set(id_list) - {x.id for x in found}
+        missing_ids = set(id_list) - {id_of(x) for x in found}
         raise NotFoundError(f"Missing IDs: {missing_ids}")
 
     async with db_helper.commit_db_ops(db=db):

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Protocol, Sequence
 
 from pydantic import BaseModel
-from sqlalchemy.orm import DeclarativeBase, Mapped
+from sqlalchemy.orm import Mapped
 
 
 class ResponseType(Enum):
@@ -14,8 +14,8 @@ class HasIdMixin:
     id: Mapped[int]
 
 
-class HasIdBase(DeclarativeBase, HasIdMixin):
-    pass
+# class HasIdBase(Protocol):  # , DeclarativeBase, HasIdMixin):
+#     id: Mapped[int]
 
 
 class BatchItemProtocol[E: BaseModel](Protocol):

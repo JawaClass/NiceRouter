@@ -11,7 +11,8 @@ from sqlalchemy.orm import DeclarativeBase
 from nicerouter.normalization.normalizer import ObjectNormalizer
 from nicerouter.normalization.type_builder import build_normalized_store_model
 from nicerouter.routing.models.models import (
-    HasIdBase,
+    DeleteBatchEntityResponse,
+    DeleteEntityResponse,
     ResponseType,
     create_batch_input_model,
 )
@@ -182,7 +183,7 @@ def create_get_by_id_route(
     )
 
 
-def create_post_route[E: HasIdBase](
+def create_post_route[E: DeclarativeBase](
     *,
     db_class: type[E],
     input_model: type[BaseModel],
@@ -236,7 +237,7 @@ def create_post_route[E: HasIdBase](
     )
 
 
-def create_patch_route[E: HasIdBase, I: BaseModel](
+def create_patch_route[E: DeclarativeBase, I: BaseModel](
     *,
     db_class: type[E],
     input_model: type[I],
@@ -337,7 +338,7 @@ def create_delete_route(
         path=f"{prefix}/{{id}}",
         methods=["DELETE"],
         tags=[*tags_from_prefix(prefix)],
-        response_model=dict,
+        response_model=DeleteEntityResponse,
         endpoint=endpoint,
     )
 
@@ -367,6 +368,6 @@ def create_delete_multi_route(
         path=f"{prefix}",
         methods=["DELETE"],
         tags=[*tags_from_prefix(prefix)],
-        response_model=dict,
+        response_model=DeleteBatchEntityResponse,
         endpoint=endpoint,
     )

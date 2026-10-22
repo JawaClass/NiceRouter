@@ -1,13 +1,12 @@
 from typing import Any, Literal, Sequence, cast
 
 import sqlalchemy as sa
-from nicerouter.routing.exceptions import NotFoundError
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase, load_only
+from sqlalchemy.orm import DeclarativeBase, InstrumentedAttribute, load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
-from nicerouter.routing.models.models import HasIdBase
+from nicerouter.routing.exceptions import NotFoundError
 from nicerouter.routing.service.param_builders import (
     build_exclude_fields_set,
     build_filter_by,
@@ -42,7 +41,7 @@ def sa_to_dict(
         depth = 0
 
     if path is None:
-        path = dict()  # dict is an ordered set
+        path: dict[Any, Any] = {}  # dict is an ordered set
 
     if type_ in path:
         if on_recursion == "raise":
@@ -85,13 +84,22 @@ def sa_to_dict(
     return obj
 
 
-async def scalar_or_throw_by_id[E: HasIdBase](
+def id_column(db_class: type[DeclarativeBase]) -> InstrumentedAttribute[int]:
+    """The ``id`` attribute of a mapped class."""
+    return getattr(db_class, "id")
+
+
+def id_of(instance: DeclarativeBase) -> int:
+    return getattr(instance, "id")
+
+
+async def scalar_or_throw_by_id[E: DeclarativeBase](
     *,
     db: AsyncSession,
     db_class: type[E],
     id: int,
 ) -> E:
-    query = sa.select(db_class).where(db_class.id == id)
+    query = sa.select(db_class).where(id_column(db_class) == id)
     return await scalar_or_throw(db=db, db_class=db_class, query=query)
 
 

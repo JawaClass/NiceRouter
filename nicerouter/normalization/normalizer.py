@@ -1,12 +1,13 @@
+import logging
 from collections import defaultdict
+from collections.abc import Callable
 from functools import cache
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel
 
 from nicerouter.normalization.type_util import is_list_reference_type, is_reference_type
 from nicerouter.type_utils import extract_most_inner_type
-import logging
 
 LOGGER = logging.getLogger(__name__)
 

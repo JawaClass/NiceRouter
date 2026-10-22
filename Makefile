@@ -26,10 +26,6 @@ db-check: ## Run alembic check of backend
 	uv run alembic --config alembic.ini check
 
 fix: lint-fix format ## Auto-fix lint issues and format
-
-db-migrate: ## alembic migrate orm changes to db
-	uv run alembic upgrade head
  
-check:  lint format-check typecheck ## Run everything read-only (good for CI)
+check:  lint format-check typecheck test ## Run everything read-only (good for CI)
  
-cicd: db-migrate db-check check

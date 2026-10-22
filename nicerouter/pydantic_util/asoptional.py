@@ -10,12 +10,7 @@ from nicerouter.type_utils import extract_most_inner_type
 
 
 def is_a_pydantic(type_: type[Any]):
-    # try:
     return issubclass(type_, BaseModel)
-    # except TypeError as e:
-    #     print("-------------------------> is_a_pydantic ERROR", e)
-    #     input("...")
-    #     return False
 
 
 def new_field_info(field_original: FieldInfo):

@@ -1,9 +1,12 @@
-from typing import Sequence, Union, get_origin
+from collections.abc import Sequence
+from typing import Any, Union, get_origin
+
 from pydantic import BaseModel
+
 from nicerouter.type_utils import extract_most_inner_type
 
 
-def is_reference_type(typ: type) -> bool:
+def is_reference_type(typ: type[Any]) -> bool:
     if typ is None:
         return False
 

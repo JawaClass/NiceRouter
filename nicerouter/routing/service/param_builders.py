@@ -1,15 +1,20 @@
-from nicerouter.routing.exceptions import InvalidQueryError
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql.schema import Column
-from sqlalchemy.orm import DeclarativeBase
+
+from nicerouter.routing.exceptions import InvalidQueryError
 
 
 def is_column_field(db_class: type[DeclarativeBase], field: str):
-    attr = getattr(db_class, field)
-    if not attr:
+    attr = getattr(db_class, field, None)
+    if attr is None:
         return False
 
-    return isinstance(attr, InstrumentedAttribute)
+    if not isinstance(attr, InstrumentedAttribute):
+        return False
+
+    # relationships are InstrumentedAttributes too, but have no column
+    return field in db_class.__table__.c
 
 
 def build_filter_by(filter_by: str, db_class: type[DeclarativeBase]):
@@ -20,7 +25,7 @@ def build_filter_by(filter_by: str, db_class: type[DeclarativeBase]):
         if not is_column_field(db_class, field):
             raise InvalidQueryError(f"Invalid filter field: {field}")
 
-        col: Column = getattr(db_class.__table__.c, field)
+        col = getattr(db_class.__table__.c, field)
 
         if not isinstance(col, Column):
             raise InvalidQueryError(

@@ -4,7 +4,7 @@ from typing import Any, Iterable
 import sqlalchemy as sa
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
-from sqlalchemy.orm import Load, selectinload, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Load, selectinload
 
 from nicerouter.routing.service.param_builders import build_select_fields
 from nicerouter.type_utils import extract_most_inner_type

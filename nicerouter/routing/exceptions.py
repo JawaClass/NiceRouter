@@ -1,7 +1,3 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-
-
 class NiceRouterError(Exception):
     """Base class for all errors raised by nicerouter's routing package."""
 
@@ -32,4 +28,3 @@ class IntegrityViolationError(NiceRouterError):
 
 class DatabaseError(NiceRouterError):
     status_code = 500
-
